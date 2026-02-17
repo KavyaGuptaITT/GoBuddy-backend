@@ -1,0 +1,15 @@
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\bin\Debug\net10.0\GoBuddy.BusinessLayer.deps.json
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\bin\Debug\net10.0\GoBuddy.BusinessLayer.dll
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\bin\Debug\net10.0\GoBuddy.BusinessLayer.pdb
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.AssemblyInfoInputs.cache
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.AssemblyInfo.cs
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.csproj.CoreCompileInputs.cache
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.dll
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\refint\GoBuddy.BusinessLayer.dll
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.pdb
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\ref\GoBuddy.BusinessLayer.dll
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\bin\Debug\net10.0\GoBuddy.Domain.dll
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\bin\Debug\net10.0\GoBuddy.Domain.pdb
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy.BusinessLayer.csproj.AssemblyReference.cache
+C:\Users\kavya.gupta\GoBuddy-Application\GoBuddy-backend\GoBuddy.Application\obj\Debug\net10.0\GoBuddy..F64AEF9B.Up2Date
