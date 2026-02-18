@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using GoBuddy.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoBuddy.Infrastructure.Persistence
 {
@@ -7,5 +8,8 @@ namespace GoBuddy.Infrastructure.Persistence
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
+        public DbSet<User> Users { get; set; }
     }
 }
+
+
