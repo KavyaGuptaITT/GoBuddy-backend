@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="GoBuddy.API/GoBuddy.API.csproj" />
+  <Project Path="GoBuddy.Application/GoBuddy.BusinessLayer.csproj" />
+  <Project Path="GoBuddy.Domain/GoBuddy.Domain.csproj" />
+  <Project Path="GoBuddy.Infrastructure/GoBuddy.Infrastructure.csproj" />
+</Solution>

@@ -1,0 +1,44 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using GoBuddy.BusinessLayer.DTOs;
+using GoBuddy.BusinessLayer.Interfaces;
+
+namespace GoBuddy.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
+    {
+        private readonly IAuthService _authService;
+
+        public AuthController(IAuthService authService)
+        {
+            _authService = authService;
+        }
+
+        [HttpPost]
+        [Route("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDTO request)
+        {
+            await _authService.RegisterAsync(request);
+
+            return Ok(new
+            {
+                success = true,
+                message = "User registered successfully"
+            });
+        }
+
+        [HttpPost]
+        [Route("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
+        {
+            string token = await _authService.LoginAsync(request);
+
+            return Ok(new
+            {
+                success = true,
+                token = token
+            });
+        }
+    }
+}
