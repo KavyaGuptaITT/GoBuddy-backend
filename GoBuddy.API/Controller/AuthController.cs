@@ -15,32 +15,30 @@ namespace GoBuddy.API.Controllers
             _authService = authService;
         }
 
-        [HttpPost("register")]
+        [HttpPost]
+        [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDTO request)
         {
-            try
+            await _authService.RegisterAsync(request);
+
+            return Ok(new
             {
-                await _authService.RegisterAsync(request);
-                return Ok(new { message = "User registered successfully" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+                success = true,
+                message = "User registered successfully"
+            });
         }
 
-        [HttpPost("login")]
+        [HttpPost]
+        [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
         {
-            try
+            string token = await _authService.LoginAsync(request);
+
+            return Ok(new
             {
-                string token = await _authService.LoginAsync(request);
-                return Ok(new { token });
-            }
-            catch (Exception ex)
-            {
-                return Unauthorized(new { error = ex.Message });
-            }
+                success = true,
+                token = token
+            });
         }
     }
 }

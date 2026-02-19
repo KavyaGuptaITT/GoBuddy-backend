@@ -1,7 +1,7 @@
-﻿using GoBuddy.BusinessLayer.Interfaces;
-using GoBuddy.BusinessLayer.DTOs;
+﻿using GoBuddy.BusinessLayer.DTOs;
+using GoBuddy.BusinessLayer.Interfaces;
 using GoBuddy.Domain.Entities;
-using BCrypt.Net;
+using GoBuddy.Domain.Enums;
 
 namespace GoBuddy.BusinessLayer.Services
 {
@@ -20,37 +20,34 @@ namespace GoBuddy.BusinessLayer.Services
         {
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            User user = new User
+            if (!Enum.TryParse(request.Role, out UserRole role))
             {
-                Id = Guid.NewGuid(),
-                Email = request.Email,
-                PasswordHash = hashedPassword,
-                Role = "User"
-            };
+                throw new ApplicationException("Invalid Role");
+            }
+
+            User user = new User(
+                request.Email,
+                hashedPassword,
+                role
+            );
 
             await _userRepository.AddAsync(user);
         }
-
         public async Task<string> LoginAsync(LoginRequestDTO request)
         {
             User? user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user == null)
-            {
-                throw new Exception("User not found");
-                
-            }
+                throw new ApplicationException("User not found");
 
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
             if (!isPasswordValid)
-            {
-                throw new Exception("Invalid password");
-            }
+                throw new ApplicationException("Invalid password");
 
             string token = _jwtService.GenerateToken(
                 user.Email,
-                user.Role,
+                user.Role.ToString(),
                 user.Id.ToString()
             );
 
