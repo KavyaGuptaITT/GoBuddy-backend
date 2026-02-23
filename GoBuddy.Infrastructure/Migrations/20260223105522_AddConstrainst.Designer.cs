@@ -4,6 +4,7 @@ using GoBuddy.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GoBuddy.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223105522_AddConstrainst")]
+    partial class AddConstrainst
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -77,7 +80,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("FK_user_ID")
+                    b.Property<int>("FK_ID")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -95,7 +98,7 @@ namespace GoBuddy.Infrastructure.Migrations
 
                     b.HasKey("PK_ID");
 
-                    b.HasIndex("FK_user_ID");
+                    b.HasIndex("FK_ID");
 
                     b.HasIndex("VehicleNo")
                         .IsUnique();
@@ -107,7 +110,7 @@ namespace GoBuddy.Infrastructure.Migrations
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
                         .WithMany("Vehicles")
-                        .HasForeignKey("FK_user_ID")
+                        .HasForeignKey("FK_ID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
