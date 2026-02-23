@@ -25,11 +25,13 @@ namespace GoBuddy.BusinessLayer.Services
                 throw new ApplicationException("Invalid Role");
             }
 
-            User user = new User(
-                request.Email,
-                hashedPassword,
-                role
-            );
+      User user = new User(
+        request.Name,
+        request.Phone,
+        request.Email,
+        hashedPassword,
+        role
+);
 
             await _userRepository.AddAsync(user);
         }
@@ -48,7 +50,7 @@ namespace GoBuddy.BusinessLayer.Services
             string token = _jwtService.GenerateToken(
                 user.Email,
                 user.Role.ToString(),
-                user.Id.ToString()
+                user.PK_ID.ToString()
             );
 
             return token;
