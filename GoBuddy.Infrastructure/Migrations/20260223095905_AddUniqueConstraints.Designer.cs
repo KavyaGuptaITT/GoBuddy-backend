@@ -4,6 +4,7 @@ using GoBuddy.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GoBuddy.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223095905_AddUniqueConstraints")]
+    partial class AddUniqueConstraints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,11 +27,11 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.User", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -55,7 +58,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -65,11 +68,11 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.Vehicle", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("VehicleId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VehicleId"));
 
                     b.Property<int>("AvailableSeats")
                         .HasColumnType("int");
@@ -77,7 +80,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("FK_user_ID")
+                    b.Property<int>("DriverId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -93,9 +96,9 @@ namespace GoBuddy.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("VehicleId");
 
-                    b.HasIndex("FK_user_ID");
+                    b.HasIndex("DriverId");
 
                     b.HasIndex("VehicleNo")
                         .IsUnique();
@@ -107,7 +110,7 @@ namespace GoBuddy.Infrastructure.Migrations
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
                         .WithMany("Vehicles")
-                        .HasForeignKey("FK_user_ID")
+                        .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
