@@ -1,59 +1,40 @@
 using GoBuddy.Application.DTOs;
-using GoBuddy.Domain.Entities;
-using GoBuddy.Infrastructure.Persistence;
+using GoBuddy.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
-namespace GoBuddy.API.Controller;
+namespace GoBuddy.API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
 public class VehiclesController : ControllerBase
 {
-    private readonly AppDbContext dbContext;
+    private readonly IVehicleService _vehicleService;
 
-    public VehiclesController(AppDbContext dbContext)
+    public VehiclesController(IVehicleService vehicleService)
     {
-        this.dbContext = dbContext;
+        _vehicleService = vehicleService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateVehicle(CreateVehicleRequest request)
+    public async Task<IActionResult> CreateVehicle(VehicleDTO request)
     {
-        var userRole = "Driver";
-        var driverId = Guid.NewGuid();
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-        if (userRole != "Driver")
-            return StatusCode(403);
+        string role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+        string userIdValue = User.FindFirst("UserId")?.Value ?? "0";
 
-        if (request.TotalSeats < 1 || request.TotalSeats > 6)
-            return BadRequest("TotalSeats must be between 1 and 6");
+        int driverId = int.Parse(userIdValue);
 
-        var existingVehicle = dbContext.Vehicles
-            .FirstOrDefault(v => v.DriverId == driverId && v.IsActive);
+        await _vehicleService.CreateVehicleAsync(driverId, role, request);
 
-        if (existingVehicle != null)
-            return BadRequest("Driver already has active vehicle");
-
-        var vehicle = new Vehicle
-        {
-            VehicleId = Guid.NewGuid(),
-            DriverId = driverId,
-            VehicleNo = request.VehicleNo,
-            TotalSeats = request.TotalSeats,
-            AvailableSeats = request.TotalSeats,
-            IsActive = true
-        };
-
-        dbContext.Vehicles.Add(vehicle);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(vehicle);
+        return Ok(new { message = "Vehicle created successfully" });
     }
 
     [HttpGet]
-    public IActionResult GetVehicles()
+    public async Task<IActionResult> GetVehicles()
     {
-        var vehicles = dbContext.Vehicles.ToList();
+        var vehicles = await _vehicleService.GetAllVehiclesAsync();
         return Ok(vehicles);
     }
 }

@@ -1,5 +1,6 @@
 using GoBuddy.BusinessLayer.Interfaces;
 using GoBuddy.BusinessLayer.Services;
+using GoBuddy.Application.Interfaces;
 using GoBuddy.Infrastructure.Persistence;
 using GoBuddy.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,8 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddSingleton<JwtService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 
 var key = Encoding.ASCII.GetBytes("THIS_IS_MY_SUPER_SECRET_KEY_12345678");
 builder.Services.AddAuthentication(options =>
@@ -46,7 +49,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "GoBuddy API V1");
-        c.RoutePrefix = "swagger"; // ensures swagger is at https://localhost:44338/swagger
+        c.RoutePrefix = "swagger"; 
     });
 }
 
