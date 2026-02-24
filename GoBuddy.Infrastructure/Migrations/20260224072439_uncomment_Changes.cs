@@ -5,18 +5,11 @@
 namespace GoBuddy.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateUserAndVehicleTables : Migration
+    public partial class uncomment_Changes : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Name",
-                table: "Users",
-                type: "nvarchar(max)",
-                nullable: false,
-                defaultValue: "");
-
             migrationBuilder.AddColumn<string>(
                 name: "Phone",
                 table: "Users",
@@ -28,10 +21,6 @@ namespace GoBuddy.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Name",
-                table: "Users");
-
             migrationBuilder.DropColumn(
                 name: "Phone",
                 table: "Users");

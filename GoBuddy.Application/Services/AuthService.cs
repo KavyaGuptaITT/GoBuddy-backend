@@ -30,7 +30,8 @@ namespace GoBuddy.BusinessLayer.Services
         request.Phone,
         request.Email,
         hashedPassword,
-        role
+        role,
+        request.Dob
 );
 
             await _userRepository.AddAsync(user);

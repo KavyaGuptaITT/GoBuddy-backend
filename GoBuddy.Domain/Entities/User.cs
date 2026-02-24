@@ -2,7 +2,6 @@
 using System.ComponentModel.DataAnnotations;
 namespace GoBuddy.Domain.Entities
 {
-
     public class User
     {
         [Key]
@@ -12,18 +11,20 @@ namespace GoBuddy.Domain.Entities
         public string Email { get; private set; }
         public string PasswordHash { get; private set; }
         public UserRole Role { get; private set; }
+        public DateTime Dob { get; private set; }  
         public DateTime CreatedAt { get; private set; }
         public DateTime UpdatedAt { get; private set; }
 
+        public int UserPin { get; private set; } = 1234;
         public ICollection<Vehicle> Vehicles { get; private set; } = new List<Vehicle>();
         public ICollection<RideSession> RideSessions { get; private set; } = new List<RideSession>();
         public ICollection<RideRequest> RideRequests { get; private set; } = new List<RideRequest>();
 
-        public User() {}
 
-        public User(string name, string phone, string email, string passwordHash, UserRole role)
+        public User() { }
+        public User(string name,string phone, string email, string passwordHash, UserRole role, DateTime dob)
+
         {
-         
             if (string.IsNullOrWhiteSpace(email))
                 throw new ArgumentException("Email cannot be empty");
 
@@ -35,6 +36,7 @@ namespace GoBuddy.Domain.Entities
             Email = email;
             PasswordHash = passwordHash;
             Role = role;
+            Dob = dob;  
 
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;

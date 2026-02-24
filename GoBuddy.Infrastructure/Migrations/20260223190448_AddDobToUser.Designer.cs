@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GoBuddy.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260223080255_UpdateUserAndVehicleTables")]
-    partial class UpdateUserAndVehicleTables
+    [Migration("20260223190448_AddDobToUser")]
+    partial class AddDobToUser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -27,18 +27,21 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.User", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("PK_ID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("Dob")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -58,18 +61,24 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("Id");
+                    b.Property<int>("UserPin")
+                        .HasColumnType("int");
+
+                    b.HasKey("PK_ID");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.Vehicle", b =>
                 {
-                    b.Property<int>("VehicleId")
+                    b.Property<int>("PK_ID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VehicleId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
 
                     b.Property<int>("AvailableSeats")
                         .HasColumnType("int");
@@ -77,7 +86,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("DriverId")
+                    b.Property<int>("FK_user_ID")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -91,11 +100,14 @@ namespace GoBuddy.Infrastructure.Migrations
 
                     b.Property<string>("VehicleNo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("VehicleId");
+                    b.HasKey("PK_ID");
 
-                    b.HasIndex("DriverId");
+                    b.HasIndex("FK_user_ID");
+
+                    b.HasIndex("VehicleNo")
+                        .IsUnique();
 
                     b.ToTable("Vehicles");
                 });
@@ -103,12 +115,17 @@ namespace GoBuddy.Infrastructure.Migrations
             modelBuilder.Entity("GoBuddy.Domain.Entities.Vehicle", b =>
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
-                        .WithMany()
-                        .HasForeignKey("DriverId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .WithMany("Vehicles")
+                        .HasForeignKey("FK_user_ID")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Driver");
+                });
+
+            modelBuilder.Entity("GoBuddy.Domain.Entities.User", b =>
+                {
+                    b.Navigation("Vehicles");
                 });
 #pragma warning restore 612, 618
         }
