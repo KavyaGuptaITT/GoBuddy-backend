@@ -30,6 +30,8 @@ namespace GoBuddy.Domain.Entities
         public DateTime CreatedAt { get; private set; }
         public DateTime UpdatedAt { get; private set; }
 
+        public RideRequest() {}
+
         public RideRequest(int rideSessionId, int passengerId, double pickupLatitude, double pickupLongitude,double dropupLatitude, double dropupLongitude, string status)
         {
            

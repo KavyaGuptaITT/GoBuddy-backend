@@ -19,6 +19,8 @@ namespace GoBuddy.Domain.Entities
         public ICollection<RideSession> RideSessions { get; private set; } = new List<RideSession>();
         public ICollection<RideRequest> RideRequests { get; private set; } = new List<RideRequest>();
 
+        public User() {}
+
         public User(string name, string phone, string email, string passwordHash, UserRole role)
         {
          
