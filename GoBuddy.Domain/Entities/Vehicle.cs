@@ -21,8 +21,6 @@ public class Vehicle
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    public Vehicle() { }
-
     public Vehicle(int driverId, string vehicleNo, int totalSeats)
     {
 
