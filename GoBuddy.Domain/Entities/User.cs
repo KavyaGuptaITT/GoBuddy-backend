@@ -16,8 +16,9 @@ namespace GoBuddy.Domain.Entities
         public DateTime UpdatedAt { get; private set; }
 
         public int UserPin { get; private set; } = 1234;
-
         public ICollection<Vehicle> Vehicles { get; private set; } = new List<Vehicle>();
+        public ICollection<RideSession> RideSessions { get; private set; } = new List<RideSession>();
+        public ICollection<RideRequest> RideRequests { get; private set; } = new List<RideRequest>();
 
         public User() { }
 
