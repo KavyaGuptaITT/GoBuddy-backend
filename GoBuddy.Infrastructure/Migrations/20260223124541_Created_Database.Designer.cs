@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GoBuddy.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260223103653_UpdateUserVehicleSchemas")]
-    partial class UpdateUserVehicleSchemas
+    [Migration("20260223124541_Created_Database")]
+    partial class Created_Database
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,6 +58,9 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("UserPin")
+                        .HasColumnType("int");
+
                     b.HasKey("PK_ID");
 
                     b.HasIndex("Email")
@@ -80,7 +83,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("FK_ID")
+                    b.Property<int>("FK_user_ID")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -98,7 +101,7 @@ namespace GoBuddy.Infrastructure.Migrations
 
                     b.HasKey("PK_ID");
 
-                    b.HasIndex("FK_ID");
+                    b.HasIndex("FK_user_ID");
 
                     b.HasIndex("VehicleNo")
                         .IsUnique();
@@ -110,7 +113,7 @@ namespace GoBuddy.Infrastructure.Migrations
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
                         .WithMany("Vehicles")
-                        .HasForeignKey("FK_ID")
+                        .HasForeignKey("FK_user_ID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
