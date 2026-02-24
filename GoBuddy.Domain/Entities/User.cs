@@ -15,9 +15,9 @@ namespace GoBuddy.Domain.Entities
         public DateTime CreatedAt { get; private set; }
         public DateTime UpdatedAt { get; private set; }
 
-         public ICollection<Vehicle> Vehicles { get; private set; } = new List<Vehicle>();
-
-       public User() {}
+        public ICollection<Vehicle> Vehicles { get; private set; } = new List<Vehicle>();
+        public ICollection<RideSession> RideSessions { get; private set; } = new List<RideSession>();
+        public ICollection<RideRequest> RideRequests { get; private set; } = new List<RideRequest>();
 
         public User(string name, string phone, string email, string passwordHash, UserRole role)
         {
