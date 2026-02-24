@@ -48,5 +48,8 @@ public class AppDbContext : DbContext
             .WithMany(session => session.RideRequests)
             .HasForeignKey(request => request.FK_RideSession_ID)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RideSession>()
+            .HasIndex(rideSession => new { rideSession.CurrentLatitude, rideSession.CurrentLongitude });
     }
 }
