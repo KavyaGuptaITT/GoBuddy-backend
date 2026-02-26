@@ -28,6 +28,6 @@ public class VehicleRepository : IVehicleRepository
     public async Task<bool> DriverHasActiveVehicleAsync(int driverId)
     {
         return await _context.Vehicles
-            .AnyAsync(vehicle => vehicle.FK_user_ID == driverId && vehicle.IsActive);
+            .AnyAsync(vehicle => vehicle.DriverId == driverId && vehicle.IsActive);
     }
 }

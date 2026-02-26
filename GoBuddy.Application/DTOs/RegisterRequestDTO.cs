@@ -1,4 +1,6 @@
 ﻿
+using Microsoft.AspNetCore.Http;
+
 namespace GoBuddy.BusinessLayer.DTOs
 {
     public class RegisterRequestDTO
@@ -7,7 +9,16 @@ namespace GoBuddy.BusinessLayer.DTOs
         public string Phone { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
-        public string Role { get; set; } = null!;   
-        public DateTime Dob { get; set; }           
+        public string Role { get; set; } = null!;
+        public DateTime Dob { get; set; }
+        public string? VehicleNumber { get; set; }
+        public string? VehicleModel { get; set; }
+        public string? LicenseNumber { get; set; }
+        public int? TotalSeats { get; set; }
+        //public IFormFile? LicenseImg { get; set; }
+       // public IFormFile? VehicleImg { get; set; }
+
     }
 }
+
+
