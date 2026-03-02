@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GoBuddy.Application.DTOs;
 using GoBuddy.BusinessLayer.DTOs;
 using GoBuddy.BusinessLayer.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualBasic;
 
 namespace GoBuddy.API.Controllers
 {
@@ -42,3 +44,4 @@ namespace GoBuddy.API.Controllers
         }
     }
 }
+
