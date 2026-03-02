@@ -43,9 +43,8 @@ namespace GoBuddy.BusinessLayer.Services
 
         private double CalculateDistance(double latitude1, double longitude1, double latitude2, double longitude2)
         {
-            
-             double earthRadius = 6371;
 
+             double earthRadius = 6371;
              double dLatitude = ToRadians(latitude2 - latitude1);
              double dLongitude = ToRadians(longitude2 - longitude1);
 

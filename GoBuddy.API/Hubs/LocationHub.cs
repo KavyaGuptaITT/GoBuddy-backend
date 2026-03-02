@@ -16,9 +16,8 @@ public class LocationHub : Hub
         //int driverId = int.Parse(userIdValue);
 
         int driverId = 11;
-
         await _locationService.UpdateLocationAsync(driverId, latitude, longitude);
-
         await Clients.All.SendAsync("ReceiveDriverLocation", latitude, longitude);
+
     }
 }
