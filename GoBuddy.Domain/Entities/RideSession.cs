@@ -13,7 +13,7 @@ namespace GoBuddy.Domain.Entities
         public int DriverId { get; private set; }
  
         [ForeignKey("DriverId")]
-        public User Driver { get; private set; } = null!;
+        public User Driver { get; private set; }
  
         public string Status { get; private set; }
         public double CurrentLatitude { get; private set; }
