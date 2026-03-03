@@ -13,7 +13,7 @@ namespace GoBuddy.Domain.Entities
         public int DriverId { get; private set; }
 
         [ForeignKey("DriverId")]
-        public User Driver { get; private set; } = null!;
+        public User Driver { get; private set; }
 
         [Required]
         [RegularExpression(@"^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$", ErrorMessage = "Invalid vehicle number format")]

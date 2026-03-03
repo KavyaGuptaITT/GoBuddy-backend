@@ -38,8 +38,8 @@ public class VehicleService : IVehicleService
         if (request.LicenseImg != null && request.LicenseImg.Length > 3 * 1024 * 1024)
             throw new ApplicationException("License image size must be less than 3MB");
 
-        byte[] vehicleBytes = await FileHelper.ConvertToBytes(request.VehicleImg);
-        byte[] licenseBytes = await FileHelper.ConvertToBytes(request.LicenseImg);
+        byte[] vehicleBytes = await FileHelper.ConvertIFormFileToByteArrayAsync(request.VehicleImg);
+        byte[] licenseBytes = await FileHelper.ConvertIFormFileToByteArrayAsync(request.LicenseImg);
 
         vehicle.SetImages(vehicleBytes, licenseBytes);
 

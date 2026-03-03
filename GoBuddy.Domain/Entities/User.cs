@@ -8,7 +8,7 @@ namespace GoBuddy.Domain.Entities
     {
         [Key]
         public int UserId { get; private set; }
- 
+
         [Required]
         public string Name { get; private set; }
  

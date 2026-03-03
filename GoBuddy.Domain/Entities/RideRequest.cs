@@ -13,10 +13,10 @@ namespace GoBuddy.Domain.Entities
         public int PassengerId { get; private set; }
  
         [ForeignKey("RideSessionId")]
-        public RideSession RideSession { get; private set; } = null!;
+        public RideSession RideSession { get; private set; }
  
         [ForeignKey("PassengerId")]
-        public User Passenger { get; private set; } = null!;
+        public User Passenger { get; private set; }
  
         public double PickupLatitude { get; private set; }
         public double PickupLongitude { get; private set; }

@@ -6,7 +6,7 @@ namespace GoBuddy.Application.Helpers
 {
     public static class FileHelper
     {
-        public static async Task<byte[]> ConvertToBytes(IFormFile? file)
+        public static async Task<byte[]> ConvertIFormFileToByteArrayAsync(IFormFile? file)
         {
             if (file == null || file.Length == 0)
                 return Array.Empty<byte>();
