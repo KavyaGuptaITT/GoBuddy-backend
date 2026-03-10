@@ -42,7 +42,6 @@ namespace GoBuddy.BusinessLayer.Services
 
             await _userRepository.AddAsync(user);
 
-            // Driver ke case me vehicle store hoga
             if (role == UserRole.Driver)
             {
                 if (request.Vehicle == null ||
