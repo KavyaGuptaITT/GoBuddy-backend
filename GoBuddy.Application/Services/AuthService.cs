@@ -9,16 +9,16 @@ namespace GoBuddy.BusinessLayer.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IVehicleRepository _vehicleRepository;   
+        private readonly IVehicleRepository _vehicleRepository;
         private readonly JwtService _jwtService;
 
         public AuthService(
             IUserRepository userRepository,
-            IVehicleRepository vehicleService,   
+            IVehicleRepository vehicleRepository,
             JwtService jwtService)
         {
             _userRepository = userRepository;
-            _vehicleRepository = vehicleService; 
+            _vehicleRepository = vehicleRepository;
             _jwtService = jwtService;
         }
 
@@ -42,22 +42,24 @@ namespace GoBuddy.BusinessLayer.Services
 
             await _userRepository.AddAsync(user);
 
+            // Driver ke case me vehicle store hoga
             if (role == UserRole.Driver)
             {
-                if (string.IsNullOrWhiteSpace(request.VehicleNumber) ||
-                    string.IsNullOrWhiteSpace(request.VehicleModel) ||
-                    string.IsNullOrWhiteSpace(request.LicenseNumber) ||
-                    request.TotalSeats == null)
+                if (request.Vehicle == null ||
+                    string.IsNullOrWhiteSpace(request.Vehicle.VehicleNo) ||
+                    string.IsNullOrWhiteSpace(request.Vehicle.VehicleModel) ||
+                    string.IsNullOrWhiteSpace(request.Vehicle.LicenseNo) ||
+                    request.Vehicle.TotalSeats <= 0)
                 {
-                    throw new ApplicationException("Vehicle details required for Driver");
+                    throw new ApplicationException("Vehicle details are required for Driver");
                 }
 
                 var vehicle = new Vehicle(
                     user.UserId,
-                    request.VehicleNumber,
-                    request.VehicleModel,
-                    request.LicenseNumber,
-                    request.TotalSeats.Value
+                    request.Vehicle.VehicleNo,
+                    request.Vehicle.VehicleModel,
+                    request.Vehicle.LicenseNo,
+                    request.Vehicle.TotalSeats
                 );
 
                 await _vehicleRepository.AddAsync(vehicle);
@@ -86,5 +88,3 @@ namespace GoBuddy.BusinessLayer.Services
         }
     }
 }
-
-
