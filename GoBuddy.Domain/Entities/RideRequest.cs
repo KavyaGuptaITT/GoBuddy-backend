@@ -2,21 +2,22 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using GoBuddy.Domain.Entities;
+using GoBuddy.Domain.Enums;
 
 namespace GoBuddy.Domain.Entities
 {
     public class RideRequest
     {
         [Key]
-        public int PK_ID { get; private set; }
+        public int RideRequestId { get; private set; }
 
-        public int FK_RideSession_ID { get; private set; }
-        public int FK_User_ID { get; private set; }
+        public int RideSessionId { get; private set; }
+        public int PassengerId { get; private set; }
 
-        [ForeignKey("FK_RideSession_ID")]
+        [ForeignKey("RideSessionId")]
         public RideSession RideSession { get; private set; } = null!;
 
-        [ForeignKey("FK_User_ID")]
+        [ForeignKey("PassengerId")]
         public User Passenger { get; private set; } = null!;
 
         public double PickupLatitude { get; private set; }
@@ -25,16 +26,18 @@ namespace GoBuddy.Domain.Entities
         public double DropupLatitude { get; private set; }
         public double DropupLongitude { get; private set; }
 
-        public string Status { get; private set; }
+        public RideRequestStatus Status { get; private set; }
 
         public DateTime CreatedAt { get; private set; }
         public DateTime UpdatedAt { get; private set; }
 
-        public RideRequest(int rideSessionId, int passengerId, double pickupLatitude, double pickupLongitude,double dropupLatitude, double dropupLongitude, string status)
+        private RideRequest() { }
+
+        public RideRequest(int rideSessionId, int passengerId, double pickupLatitude, double pickupLongitude,double dropupLatitude, double dropupLongitude, RideRequestStatus status)
         {
            
-            if (string.IsNullOrWhiteSpace(status))
-                throw new ArgumentException("Status cannot be empty");
+            if (!Enum.IsDefined(typeof(RideSessionStatus), status))
+               throw new ArgumentException("Invalid status");
 
             if (pickupLatitude < -90 || pickupLatitude > 90)
                throw new ArgumentException("PickupLatitude must be between -90 and 90");
@@ -48,8 +51,8 @@ namespace GoBuddy.Domain.Entities
             if (dropupLongitude < -180 || dropupLongitude > 180)
                 throw new ArgumentException("PickupLongitude must be between -180 and 180");
 
-            FK_RideSession_ID = rideSessionId;
-            FK_User_ID = passengerId;
+            RideSessionId = rideSessionId;
+            PassengerId = passengerId;
             PickupLatitude = pickupLatitude;
             PickupLongitude = pickupLongitude;
             DropupLatitude = dropupLatitude;
@@ -58,5 +61,16 @@ namespace GoBuddy.Domain.Entities
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
         }
+
+        public void Cancel()
+       {
+            if (Status == RideRequestStatus.Cancelled ||
+               Status == RideRequestStatus.Completed ||
+               Status == RideRequestStatus.Boarded)
+               throw new InvalidOperationException("Ride request cannot be cancelled");
+
+           Status = RideRequestStatus.Cancelled;
+           UpdatedAt = DateTime.UtcNow;
+       }
     }
 }
