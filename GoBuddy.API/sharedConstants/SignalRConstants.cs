@@ -26,6 +26,5 @@
         public const string CancelError = "CancelError";
         public const string CannotGoOffline = "CannotGoOffline";
         public const string Error = "Error";
-
     }
 }

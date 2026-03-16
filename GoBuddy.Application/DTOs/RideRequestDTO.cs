@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 
-
 namespace GoBuddy.API.DTOs
 {
     public class RideRequestDto
@@ -23,5 +22,4 @@ namespace GoBuddy.API.DTOs
 
         public string PassengerPin { get; set; } = string.Empty;
     }
-
 }
