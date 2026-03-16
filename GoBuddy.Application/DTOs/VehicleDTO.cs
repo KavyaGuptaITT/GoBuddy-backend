@@ -1,7 +1,15 @@
-namespace GoBuddy.Application.DTOs;
+using Microsoft.AspNetCore.Http;
 
-public class VehicleDTO
+namespace GoBuddy.Application.DTOs
 {
-    public string VehicleNo { get; set; }
-    public int TotalSeats { get; set; }
+    public class VehicleDTO
+    {
+        public string VehicleNo { get; set; } = null!;
+        public string VehicleModel { get; set; } = null!;
+        public string LicenseNo { get; set; } = null!;
+        public int TotalSeats { get; set; }
+        public int RatePerKm { get; set; } = 0;
+        public IFormFile? LicenseImg { get; set; }
+        public IFormFile? VehicleImg { get; set; }
+    }
 }
