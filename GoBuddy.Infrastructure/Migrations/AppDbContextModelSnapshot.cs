@@ -24,11 +24,11 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.RideRequest", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("RideRequestId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RideRequestId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -39,10 +39,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<double>("DropupLongitude")
                         .HasColumnType("float");
 
-                    b.Property<int>("FK_RideSession_ID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("FK_User_ID")
+                    b.Property<int>("PassengerId")
                         .HasColumnType("int");
 
                     b.Property<double>("PickupLatitude")
@@ -51,6 +48,9 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<double>("PickupLongitude")
                         .HasColumnType("float");
 
+                    b.Property<int>("RideSessionId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -58,22 +58,22 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("RideRequestId");
 
-                    b.HasIndex("FK_RideSession_ID");
+                    b.HasIndex("PassengerId");
 
-                    b.HasIndex("FK_User_ID");
+                    b.HasIndex("RideSessionId");
 
                     b.ToTable("RideRequests");
                 });
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.RideSession", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("RideSessionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RideSessionId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -84,7 +84,7 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<double>("CurrentLongitude")
                         .HasColumnType("float");
 
-                    b.Property<int>("FK_Driver_ID")
+                    b.Property<int>("DriverId")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
@@ -97,20 +97,22 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("RideSessionId");
 
-                    b.HasIndex("FK_Driver_ID");
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("CurrentLatitude", "CurrentLongitude");
 
                     b.ToTable("RideSessions");
                 });
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.User", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -132,7 +134,7 @@ namespace GoBuddy.Infrastructure.Migrations
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Role")
                         .HasColumnType("int");
@@ -143,9 +145,12 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<int>("UserPin")
                         .HasColumnType("int");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("UserId");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Phone")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -153,11 +158,11 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.Vehicle", b =>
                 {
-                    b.Property<int>("PK_ID")
+                    b.Property<int>("VehicleId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PK_ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VehicleId"));
 
                     b.Property<int>("AvailableSeats")
                         .HasColumnType("int");
@@ -165,11 +170,18 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("FK_user_ID")
+                    b.Property<int>("DriverId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<byte[]>("LicenseImage")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("LicenseNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("TotalSeats")
                         .HasColumnType("int");
@@ -177,13 +189,20 @@ namespace GoBuddy.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<byte[]>("VehicleImage")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("VehicleModel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("VehicleNo")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("PK_ID");
+                    b.HasKey("VehicleId");
 
-                    b.HasIndex("FK_user_ID");
+                    b.HasIndex("DriverId");
 
                     b.HasIndex("VehicleNo")
                         .IsUnique();
@@ -193,16 +212,16 @@ namespace GoBuddy.Infrastructure.Migrations
 
             modelBuilder.Entity("GoBuddy.Domain.Entities.RideRequest", b =>
                 {
-                    b.HasOne("GoBuddy.Domain.Entities.RideSession", "RideSession")
-                        .WithMany("RideRequests")
-                        .HasForeignKey("FK_RideSession_ID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("GoBuddy.Domain.Entities.User", "Passenger")
                         .WithMany("RideRequests")
-                        .HasForeignKey("FK_User_ID")
+                        .HasForeignKey("PassengerId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GoBuddy.Domain.Entities.RideSession", "RideSession")
+                        .WithMany("RideRequests")
+                        .HasForeignKey("RideSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Passenger");
@@ -214,7 +233,7 @@ namespace GoBuddy.Infrastructure.Migrations
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
                         .WithMany("RideSessions")
-                        .HasForeignKey("FK_Driver_ID")
+                        .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -225,7 +244,7 @@ namespace GoBuddy.Infrastructure.Migrations
                 {
                     b.HasOne("GoBuddy.Domain.Entities.User", "Driver")
                         .WithMany("Vehicles")
-                        .HasForeignKey("FK_user_ID")
+                        .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

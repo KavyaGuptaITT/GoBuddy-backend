@@ -1,4 +1,5 @@
 using GoBuddy.Application.DTOs;
+using GoBuddy.Application.Helpers;
 using GoBuddy.Application.Interfaces;
 using GoBuddy.Domain.Entities;
 using GoBuddy.Domain.Enums;
@@ -23,10 +24,24 @@ public class VehicleService : IVehicleService
         if (alreadyExists)
             throw new ApplicationException("Driver already has an active vehicle");
 
-        if (request.TotalSeats < 1 || request.TotalSeats > 6)
-            throw new ApplicationException("Total seats must be between 1 and 6");
+        Vehicle vehicle = new Vehicle(
+            driverId,
+            request.VehicleNo,
+            request.VehicleModel,
+            request.LicenseNo,
+            request.TotalSeats
+        );
 
-        Vehicle vehicle = new Vehicle(driverId, request.VehicleNo, request.TotalSeats);
+        if (request.VehicleImg != null && request.VehicleImg.Length > 3 * 1024 * 1024)
+            throw new ApplicationException("Vehicle image size must be less than 3MB");
+
+        if (request.LicenseImg != null && request.LicenseImg.Length > 3 * 1024 * 1024)
+            throw new ApplicationException("License image size must be less than 3MB");
+
+        byte[] vehicleBytes = await FileHelper.ConvertIFormFileToByteArrayAsync(request.VehicleImg);
+        byte[] licenseBytes = await FileHelper.ConvertIFormFileToByteArrayAsync(request.LicenseImg);
+
+        vehicle.SetImages(vehicleBytes, licenseBytes);
 
         await _vehicleRepository.AddAsync(vehicle);
     }

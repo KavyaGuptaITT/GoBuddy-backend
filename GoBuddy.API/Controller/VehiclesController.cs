@@ -1,5 +1,6 @@
 using GoBuddy.Application.DTOs;
 using GoBuddy.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -15,20 +16,19 @@ public class VehiclesController : ControllerBase
         _vehicleService = vehicleService;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CreateVehicle(VehicleDTO request)
+    [HttpPut]
+    public async Task<IActionResult> AddVehicle([FromForm] VehicleDTO request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         string role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
         string userIdValue = User.FindFirst("UserId")?.Value ?? "0";
-
         int driverId = int.Parse(userIdValue);
 
-        await _vehicleService.CreateVehicleAsync(driverId, role, request);
+        await _vehicleService.AddVehicleAsync(driverId, role, request);
 
-        return Ok(new { message = "Vehicle created successfully" });
+        return Ok(new { message = "Vehicle added successfully" });
     }
 
     [HttpGet]
