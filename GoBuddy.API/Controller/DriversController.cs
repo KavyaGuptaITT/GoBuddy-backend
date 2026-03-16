@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GoBuddy.API.Controllers
 {
+
     [ApiController]
     [Route("api/[controller]")]
     public class DriversController : ControllerBase
@@ -58,6 +59,7 @@ namespace GoBuddy.API.Controllers
                 .ToList();
 
             return Ok(nearbyDrivers);
+
         }
     }
 }
