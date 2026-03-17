@@ -1,52 +1,57 @@
 ﻿using GoBuddy.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace GoBuddy.Infrastructure.Persistence;
-
-public class AppDbContext : DbContext
+namespace GoBuddy.Infrastructure.Persistence
 {
-    public DbSet<User> Users { get; set; }
-    public DbSet<Vehicle> Vehicles { get; set; }
-    public DbSet<RideSession> RideSessions { get; set; }
-    public DbSet<RideRequest> RideRequests { get; set; }
-
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options) { }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public class AppDbContext : DbContext
     {
-        base.OnModelCreating(modelBuilder);
+        public DbSet<User> Users { get; set; }
+        public DbSet<Vehicle> Vehicles { get; set; }
+        public DbSet<RideSession> RideSessions { get; set; }
+        public DbSet<RideRequest> RideRequests { get; set; }
 
-        modelBuilder.Entity<User>()
-            .HasIndex(user => user.Email)
-            .IsUnique();
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        modelBuilder.Entity<Vehicle>()
-            .HasIndex(vehicle => vehicle.VehicleNo)
-            .IsUnique();
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Vehicle>()
-            .HasOne(vehicle => vehicle.Driver)
-            .WithMany(user => user.Vehicles)
-            .HasForeignKey(vehicle => vehicle.FK_user_ID)
-            .OnDelete(DeleteBehavior.Restrict);
+            var user = modelBuilder.Entity<User>();
 
-        modelBuilder.Entity<RideSession>()
-            .HasOne(session => session.Driver)
-            .WithMany(user => user.RideSessions)
-            .HasForeignKey(session => session.FK_Driver_ID)
-            .OnDelete(DeleteBehavior.Restrict);
+            user.HasIndex(userEntity => userEntity.Email).IsUnique();
+            user.HasIndex(userEntity => userEntity.Phone).IsUnique();
 
-        modelBuilder.Entity<RideRequest>()
-            .HasOne(request => request.Passenger)
-            .WithMany(user => user.RideRequests)
-            .HasForeignKey(request => request.FK_User_ID)
-            .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<RideRequest>()
-            .HasOne(request => request.RideSession)
-            .WithMany(session => session.RideRequests)
-            .HasForeignKey(request => request.FK_RideSession_ID)
-            .OnDelete(DeleteBehavior.Cascade);
+            var vehicle = modelBuilder.Entity<Vehicle>();
+
+            vehicle.HasIndex(vehicleEntity => vehicleEntity.VehicleNo).IsUnique();
+            vehicle.HasIndex(vehicleEntity => vehicleEntity.LicenseNo).IsUnique();
+
+            vehicle.HasOne(vehicleEntity => vehicleEntity.Driver)
+                   .WithMany(userEntity => userEntity.Vehicles)
+                   .HasForeignKey(vehicleEntity => vehicleEntity.DriverId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+
+            var rideSession = modelBuilder.Entity<RideSession>();
+
+            rideSession.HasOne(sessionEntity => sessionEntity.Driver)
+                       .WithMany(userEntity => userEntity.RideSessions)
+                       .HasForeignKey(sessionEntity => sessionEntity.DriverId)
+                       .OnDelete(DeleteBehavior.Restrict);
+
+            var rideRequest = modelBuilder.Entity<RideRequest>();
+
+            rideRequest.HasOne(requestEntity => requestEntity.Passenger)
+                       .WithMany(userEntity => userEntity.RideRequests)
+                       .HasForeignKey(requestEntity => requestEntity.PassengerId)
+                       .OnDelete(DeleteBehavior.Restrict);
+
+            rideRequest.HasOne(requestEntity => requestEntity.RideSession)
+                       .WithMany(sessionEntity => sessionEntity.RideRequests)
+                       .HasForeignKey(requestEntity => requestEntity.RideSessionId)
+                       .OnDelete(DeleteBehavior.Cascade);
+        }
     }
+
 }

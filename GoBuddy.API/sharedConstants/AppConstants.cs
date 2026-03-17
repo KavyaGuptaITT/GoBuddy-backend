@@ -11,5 +11,9 @@
         public const double KmConversionFactor = 111.0;
 
         public const double DefaultSearchRadiusKm = 2.0;
+
+        public const int RequestTimeoutMs = 15000;
+
+        public const int RoundDigits = 2;
     }
 }

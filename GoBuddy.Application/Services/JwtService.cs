@@ -15,15 +15,21 @@ namespace GoBuddy.BusinessLayer.Services
             secretKey = configuration["Jwt:Key"]!;
         }
 
-        public string GenerateToken(string email, string role, string userId)
+        public string GenerateToken(string email, string role, string userId, string name, string vehicleModel, string userPin, int availableSeats, decimal ratePerKm)
         {
             byte[] key = Encoding.UTF8.GetBytes(secretKey);
-
             List<Claim> claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, role)
-            };
+    {
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Role, role),
+        new Claim(ClaimTypes.NameIdentifier, userId),
+        new Claim(ClaimTypes.Name, name),
+        new Claim("VehicleModel", vehicleModel),
+        new Claim("UserPin", userPin),
+        new Claim("AvailableSeats", availableSeats.ToString()),
+        new Claim("RatePerKm", ratePerKm.ToString())
+
+    };
 
             SigningCredentials credentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
