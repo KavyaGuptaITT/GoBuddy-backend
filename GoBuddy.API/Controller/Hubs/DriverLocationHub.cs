@@ -37,7 +37,8 @@ namespace GoBuddy.API.Hubs
         public double DropLng { get; set; }
         public string PickupName { get; set; } = string.Empty;
         public string DropName { get; set; } = string.Empty;
-        public CancellationTokenSource Cts { get; set; } = new();
+
+        public CancellationTokenSource RequestCancellationTokenSource { get; set; } = new();
     }
 
     public class ActiveRide
@@ -52,7 +53,6 @@ namespace GoBuddy.API.Hubs
 
     public class DriverLocationHub : Hub
     {
-
         public async Task DriverGoOnline(double latitude, double longitude,
             string driverName, string vehicleModel, int availableSeats, decimal ratePerKm)
         {
@@ -71,15 +71,9 @@ namespace GoBuddy.API.Hubs
                 RatePerKm = ratePerKm
             };
 
-            await Clients.All.SendAsync(SignalRConstants.DriverOnline, new
-            {
-                DriverId = connectionId,
-                DriverName = driverName,
-                VehicleModel = vehicleModel,
-                Latitude = latitude,
-                Longitude = longitude,
-                AvailableSeats = availableSeats
-            });
+            var payload = GetDriverOnlinePayload(connectionId, driverName, vehicleModel, latitude, longitude, availableSeats);
+
+            await Clients.All.SendAsync(SignalRConstants.DriverOnline, payload);
         }
 
         public async Task UpdateLocation(double latitude, double longitude)
@@ -93,12 +87,9 @@ namespace GoBuddy.API.Hubs
                 driver.LastUpdated = DateTime.UtcNow;
             }
 
-            await Clients.All.SendAsync(SignalRConstants.LocationUpdated, new
-            {
-                DriverId = connectionId,
-                Latitude = latitude,
-                Longitude = longitude
-            });
+            var payload = GetLocationUpdatedPayload(connectionId, latitude, longitude);
+
+            await Clients.All.SendAsync(SignalRConstants.LocationUpdated, payload);
         }
 
         public async Task DriverGoOffline()
@@ -140,22 +131,9 @@ namespace GoBuddy.API.Hubs
 
             driver.IsBusy = true;
 
-            var cts = new CancellationTokenSource();
+            var requestCancellationTokenSource = new CancellationTokenSource();
 
-            var pendingRequest = new PendingRequest
-            {
-                PassengerConnectionId = Context.ConnectionId,
-                PassengerId = request.PassengerId,
-                PassengerName = request.PassengerName,
-                PassengerPin = request.PassengerPin,
-                PickupLat = request.PickupLatitude,
-                PickupLng = request.PickupLongitude,
-                DropLat = request.DropLatitude,
-                DropLng = request.DropLongitude,
-                PickupName = request.PickupName,
-                DropName = request.DropName,
-                Cts = cts
-            };
+            var pendingRequest = CreatePendingRequest(request, Context.ConnectionId, requestCancellationTokenSource);
 
             OnlineDriversStore.PendingRequests[request.DriverConnectionId] = pendingRequest;
 
@@ -180,7 +158,8 @@ namespace GoBuddy.API.Hubs
             {
                 try
                 {
-                    await Task.Delay(20000, cts.Token);
+                    await Task.Delay(AppConstants.DriverResponseTimeoutMilliseconds,
+                        requestCancellationTokenSource.Token);
 
                     if (OnlineDriversStore.PendingRequests.TryRemove(request.DriverConnectionId, out _))
                     {
@@ -210,28 +189,23 @@ namespace GoBuddy.API.Hubs
                 return;
             }
 
-            request.Cts.Cancel();
+            request.RequestCancellationTokenSource.Cancel();
 
             if (OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver))
                 driver.IsBusy = true;
 
             double totalKm = Math.Round(
                 Math.Sqrt(
-                    Math.Pow(request.PickupLat - request.DropLat, 2) +
-                    Math.Pow(request.PickupLng - request.DropLng, 2)
-                ) * 111.0, 2);
+                    Math.Pow(request.PickupLat - request.DropLat, AppConstants.SquarePower) +
+                    Math.Pow(request.PickupLng - request.DropLng, AppConstants.SquarePower)
+                ) * AppConstants.KmConversionFactor,
+                AppConstants.DistanceRoundingPrecision);
 
             var rideId = Guid.NewGuid().ToString();
 
-            OnlineDriversStore.ActiveRides[rideId] = new ActiveRide
-            {
-                DriverConnectionId = driverConnectionId,
-                PassengerConnectionId = request.PassengerConnectionId,
-                PassengerId = request.PassengerId,
-                PassengerPin = request.PassengerPin,
-                PinConfirmed = false,
-                TotalKm = totalKm
-            };
+            var activeRide = CreateActiveRide(driverConnectionId, request, totalKm);
+
+            OnlineDriversStore.ActiveRides[rideId] = activeRide;
 
             await Clients.Client(request.PassengerConnectionId).SendAsync(SignalRConstants.RideAccepted, new
             {
@@ -253,7 +227,7 @@ namespace GoBuddy.API.Hubs
             if (!OnlineDriversStore.PendingRequests.TryRemove(driverConnectionId, out var request))
                 return;
 
-            request.Cts.Cancel();
+            request.RequestCancellationTokenSource.Cancel();
 
             if (OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver))
                 driver.IsBusy = false;
@@ -294,7 +268,7 @@ namespace GoBuddy.API.Hubs
         {
             if (OnlineDriversStore.PendingRequests.TryRemove(connectionId, out var request))
             {
-                request.Cts.Cancel();
+                request.RequestCancellationTokenSource.Cancel();
 
                 if (OnlineDriversStore.Drivers.TryGetValue(connectionId, out var driver))
                     driver.IsBusy = false;
@@ -305,6 +279,62 @@ namespace GoBuddy.API.Hubs
             }
 
             OnlineDriversStore.Drivers.TryRemove(connectionId, out _);
+        }
+
+    
+        private object GetDriverOnlinePayload(string connectionId, string driverName, string vehicleModel,
+            double latitude, double longitude, int availableSeats)
+        {
+            return new
+            {
+                DriverId = connectionId,
+                DriverName = driverName,
+                VehicleModel = vehicleModel,
+                Latitude = latitude,
+                Longitude = longitude,
+                AvailableSeats = availableSeats
+            };
+        }
+
+        private object GetLocationUpdatedPayload(string connectionId, double latitude, double longitude)
+        {
+            return new
+            {
+                DriverId = connectionId,
+                Latitude = latitude,
+                Longitude = longitude
+            };
+        }
+
+        private PendingRequest CreatePendingRequest(RideRequestDto request, string connectionId, CancellationTokenSource cts)
+        {
+            return new PendingRequest
+            {
+                PassengerConnectionId = connectionId,
+                PassengerId = request.PassengerId,
+                PassengerName = request.PassengerName,
+                PassengerPin = request.PassengerPin,
+                PickupLat = request.PickupLatitude,
+                PickupLng = request.PickupLongitude,
+                DropLat = request.DropLatitude,
+                DropLng = request.DropLongitude,
+                PickupName = request.PickupName,
+                DropName = request.DropName,
+                RequestCancellationTokenSource = cts
+            };
+        }
+
+        private ActiveRide CreateActiveRide(string driverConnectionId, PendingRequest request, double totalKm)
+        {
+            return new ActiveRide
+            {
+                DriverConnectionId = driverConnectionId,
+                PassengerConnectionId = request.PassengerConnectionId,
+                PassengerId = request.PassengerId,
+                PassengerPin = request.PassengerPin,
+                PinConfirmed = false,
+                TotalKm = totalKm
+            };
         }
     }
 }
