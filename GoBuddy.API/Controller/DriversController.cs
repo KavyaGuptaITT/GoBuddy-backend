@@ -22,7 +22,7 @@ namespace GoBuddy.API.Controllers
                              * AppConstants.KmConversionFactor;
         }
 
-        [HttpGet("getAllDrivers")]
+        [HttpGet("GetAllDrivers")]
         public IActionResult GetAllDrivers()
         {
             var drivers = OnlineDriversStore.Drivers.Values
@@ -41,7 +41,7 @@ namespace GoBuddy.API.Controllers
             return Ok(drivers);
         }
 
-        [HttpGet("getNearbyDrivers")]
+        [HttpGet("GetAllNearbyDrivers")]
         public IActionResult GetNearbyDrivers(
             [FromQuery] double passengerLatitude,
             [FromQuery] double passengerLongitude,
@@ -49,7 +49,7 @@ namespace GoBuddy.API.Controllers
         {
             var nearbyDrivers = OnlineDriversStore.Drivers.Values
                 .Where(driver =>
-                    !driver.IsBusy &&
+                    !driver.IsBusy && driver.AvailableSeats > 0 &&
                     CalculateDistance(
                         passengerLatitude,
                         passengerLongitude,

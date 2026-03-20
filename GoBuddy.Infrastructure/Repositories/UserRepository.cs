@@ -16,7 +16,9 @@ namespace GoBuddy.Infrastructure.Repositories
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            User? user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(user => user.Email == email);
             return user;
         }
 

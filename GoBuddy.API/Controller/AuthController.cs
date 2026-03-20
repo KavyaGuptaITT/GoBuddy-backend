@@ -19,7 +19,7 @@ namespace GoBuddy.API.Controllers
 
         [HttpPost]
         [Route("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDTO request)
+        public async Task<IActionResult> Register([FromForm] RegisterRequestDTO request)
         {
             await _authService.RegisterAsync(request);
 

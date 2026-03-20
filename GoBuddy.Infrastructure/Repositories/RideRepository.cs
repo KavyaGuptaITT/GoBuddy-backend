@@ -30,19 +30,20 @@ namespace GoBuddy.Infrastructure.Repositories
         public async Task<List<RideSession>> GetDriverRidesAsync(int driverId)
         {
             return await _context.RideSessions
-                .Where(s => s.DriverId == driverId && s.Status == "Completed")
-                .Include(s => s.RideRequests)
-                .OrderByDescending(s => s.CreatedAt)
+                .Where(session => session.DriverId == driverId && session.Status == "Completed")
+                .Include(session => session.RideRequests)
+                .OrderByDescending(session => session.CreatedAt)
                 .ToListAsync();
         }
 
         public async Task<List<RideRequest>> GetPassengerRidesAsync(int passengerId)
         {
             return await _context.RideRequests
-                .Where(r => r.PassengerId == passengerId)
-                .Include(r => r.RideSession)
-                    .ThenInclude(s => s.Driver)
-                .OrderByDescending(r => r.CreatedAt)
+                .AsNoTracking()
+                .Where(ride => ride.PassengerId == passengerId)
+                .Include(ride => ride.RideSession)
+                    .ThenInclude(session => session.Driver)
+                .OrderByDescending(ride => ride.CreatedAt)
                 .ToListAsync();
         }
     }

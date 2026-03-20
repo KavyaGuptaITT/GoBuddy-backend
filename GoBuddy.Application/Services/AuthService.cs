@@ -40,6 +40,29 @@ namespace GoBuddy.BusinessLayer.Services
 
             await _userRepository.AddAsync(user);
 
+            //if (role == UserRole.Driver)
+            //{
+            //    if (string.IsNullOrWhiteSpace(request.VehicleNumber) ||
+            //        string.IsNullOrWhiteSpace(request.VehicleModel) ||
+            //        string.IsNullOrWhiteSpace(request.LicenseNumber) ||
+            //        request.TotalSeats == null ||
+            //        request.RatePerKm == null)
+            //    {
+            //        throw new ApplicationException("Vehicle details required for Driver");
+            //    }
+
+            //    var vehicle = new Vehicle(
+            //        user.UserId,
+            //        request.VehicleNumber,
+            //        request.VehicleModel,
+            //        request.LicenseNumber,
+            //        request.TotalSeats.Value,
+            //        request.RatePerKm.Value
+            //    );
+
+            //    await _vehicleRepository.AddAsync(vehicle);
+            //}
+
             if (role == UserRole.Driver)
             {
                 if (string.IsNullOrWhiteSpace(request.VehicleNumber) ||
@@ -60,10 +83,30 @@ namespace GoBuddy.BusinessLayer.Services
                     request.RatePerKm.Value
                 );
 
+                byte[]? licenseImageBytes = null;
+                byte[]? vehicleImageBytes = null;
+
+                if (request.LicenseImg != null)
+                {
+                    using var ms = new MemoryStream();
+                    await request.LicenseImg.CopyToAsync(ms);
+                    licenseImageBytes = ms.ToArray();
+                }
+
+                if (request.VehicleImg != null)
+                {
+                    using var ms = new MemoryStream();
+                    await request.VehicleImg.CopyToAsync(ms);
+                    vehicleImageBytes = ms.ToArray();
+                }
+
+                vehicle.SetImages(vehicleImageBytes, licenseImageBytes);
+
                 await _vehicleRepository.AddAsync(vehicle);
             }
         }
 
+            
         public async Task<string> LoginAsync(LoginRequestDTO request)
         {
             User? user = await _userRepository.GetByEmailAsync(request.Email);

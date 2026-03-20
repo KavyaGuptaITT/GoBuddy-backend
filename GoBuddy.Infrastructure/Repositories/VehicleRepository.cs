@@ -28,12 +28,14 @@ public class VehicleRepository : IVehicleRepository
     public async Task<bool> DriverHasActiveVehicleAsync(int driverId)
     {
         return await _context.Vehicles
+            .AsNoTracking()
             .AnyAsync(vehicle => vehicle.DriverId == driverId && vehicle.IsActive);
     }
     public async Task<Vehicle?> GetByDriverIdAsync(int driverId)
     {
         return await _context.Vehicles
-            .FirstOrDefaultAsync(v => v.DriverId == driverId);
+            .AsNoTracking()
+            .FirstOrDefaultAsync(vehicle => vehicle.DriverId == driverId);
     }
 
     public async Task UpdateAsync(Vehicle vehicle)
