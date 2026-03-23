@@ -12,6 +12,7 @@ namespace GoBuddy.Domain.Entities
         public int DriverId { get; private set; }
 
         [ForeignKey("DriverId")]
+
         public User Driver { get; private set; } = null!;
 
         [Required]
@@ -66,6 +67,7 @@ namespace GoBuddy.Domain.Entities
             LicenseImage = licenseImage ?? Array.Empty<byte>();
             UpdatedAt = DateTime.UtcNow;
         }
+
         public void ResetAvailableSeats()
         {
             AvailableSeats = TotalSeats - 1;

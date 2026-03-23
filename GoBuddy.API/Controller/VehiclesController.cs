@@ -26,9 +26,9 @@ public class VehiclesController : ControllerBase
         string userIdValue = User.FindFirst("UserId")?.Value ?? "0";
         int driverId = int.Parse(userIdValue);
 
-        await _vehicleService.CreateVehicleAsync(driverId, role, request);
+        await _vehicleService.AddVehicleAsync(driverId, role, request);
 
-        return Ok(new { message = "Vehicle created successfully" });
+        return Ok(new { message = "Vehicle added successfully" });
     }
 
     [HttpGet]
