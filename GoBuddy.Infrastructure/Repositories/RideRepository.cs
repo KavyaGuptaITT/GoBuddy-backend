@@ -14,14 +14,14 @@ namespace GoBuddy.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<int> CreateSessionAsync(RideSession session)
+        public async Task<int> AddSessionAsync(RideSession session)
         {
             await _context.RideSessions.AddAsync(session);
             await _context.SaveChangesAsync();
             return session.RideSessionId;
         }
 
-        public async Task CreateRequestAsync(RideRequest request)
+        public async Task AddRequestAsync(RideRequest request)
         {
             await _context.RideRequests.AddAsync(request);
             await _context.SaveChangesAsync();

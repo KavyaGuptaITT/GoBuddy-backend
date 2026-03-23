@@ -15,7 +15,7 @@ namespace GoBuddy.BusinessLayer.Services
             _vehicleRepository = vehicleRepository;
         }
 
-        public async Task CreateVehicleAsync(int driverId, string role, VehicleDTO request)
+        public async Task AddVehicleAsync(int driverId, string role, VehicleDTO request)
         {
             if (role != UserRole.Driver.ToString())
                 throw new ApplicationException("Only drivers can add vehicles");

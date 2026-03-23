@@ -337,14 +337,6 @@ namespace GoBuddy.API.Hubs
                     return;
                 }
 
-                //ride.PinConfirmed = true;
-
-                //await Clients.Client(ride.PassengerConnectionId)
-                //    .SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-                //await Clients.Caller.SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-
-
-
                 ride.PinConfirmed = true;
 
                 
