@@ -337,14 +337,6 @@ namespace GoBuddy.API.Hubs
                     return;
                 }
 
-                //ride.PinConfirmed = true;
-
-                //await Clients.Client(ride.PassengerConnectionId)
-                //    .SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-                //await Clients.Caller.SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-
-
-
                 ride.PinConfirmed = true;
 
                 
@@ -431,9 +423,9 @@ namespace GoBuddy.API.Hubs
             int driverUserId = int.Parse(ride.DriverId);
             var session = new RideSession(driverUserId);
             session.Complete();
-            int sessionId = await rideRepo.CreateSessionAsync(session);
+            int sessionId = await rideRepo.AddSessionAsync(session);
 
-            await rideRepo.CreateRequestAsync(new RideRequest(
+            await rideRepo.AddRequestAsync(new RideRequest(
                 sessionId,
                 int.Parse(ride.PassengerId),
                 ride.PickupLat, ride.PickupLng,
@@ -442,12 +434,21 @@ namespace GoBuddy.API.Hubs
                 totalKm, (decimal)totalCost
             ));
 
+
             var vehicle = await vehicleRepo.GetByDriverIdAsync(driverUserId);
             if (vehicle != null)
             {
                 vehicle.ResetAvailableSeats();
                 await vehicleRepo.UpdateAsync(vehicle);
             }
+
+            driver.AvailableSeats++;
+
+            await Clients.All.SendAsync("SeatsUpdated", new
+            {
+                DriverId = ride.DriverConnectionId,
+                AvailableSeats = driver.AvailableSeats
+            });
 
             await Clients.Client(ride.PassengerConnectionId).SendAsync("RideCompleted", new
             {

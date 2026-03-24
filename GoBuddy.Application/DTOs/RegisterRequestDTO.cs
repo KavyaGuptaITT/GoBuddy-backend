@@ -10,8 +10,6 @@ namespace GoBuddy.BusinessLayer.DTOs
         public string Password { get; set; } = null!;
         public string Role { get; set; } = null!;
         public DateTime Dob { get; set; }
-
-
         public string? VehicleNumber { get; set; }
         public string? VehicleModel { get; set; }
         public string? LicenseNumber { get; set; }

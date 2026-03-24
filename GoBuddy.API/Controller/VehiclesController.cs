@@ -1,12 +1,10 @@
 using GoBuddy.Application.DTOs;
 using GoBuddy.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
+using GoBuddy.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace GoBuddy.API.Controllers;
-
-[Route("api/[controller]")]
+[Route("api/Vehicles")]
 public class VehiclesController : ControllerBase
 {
     private readonly IVehicleService _vehicleService;
@@ -17,7 +15,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpPut]
-    public async Task<IActionResult> CreateVehicle([FromForm] VehicleDTO request)
+    public async Task<IActionResult> AddVehicle([FromForm] VehicleDTO request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -26,7 +24,7 @@ public class VehiclesController : ControllerBase
         string userIdValue = User.FindFirst("UserId")?.Value ?? "0";
         int driverId = int.Parse(userIdValue);
 
-        await _vehicleService.CreateVehicleAsync(driverId, role, request);
+        await _vehicleService.AddVehicleAsync(driverId, role, request);
 
         return Ok(new { message = "Vehicle created successfully" });
     }

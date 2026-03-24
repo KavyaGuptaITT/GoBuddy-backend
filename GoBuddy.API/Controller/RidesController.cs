@@ -6,7 +6,7 @@ using System.Security.Claims;
 namespace GoBuddy.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/rides")]
     [Authorize]
     public class RidesController : ControllerBase
     {
@@ -25,20 +25,20 @@ namespace GoBuddy.API.Controllers
 
             var sessions = await _rideRepository.GetDriverRidesAsync(userId);
 
-            var result = sessions.Select(s => new
+            var result = sessions.Select(session => new
             {
-                SessionId = s.RideSessionId,
-                Date = s.CreatedAt,
-                CompletedAt = s.CompletedAt,
-                TotalPassengers = s.RideRequests.Count,
-                TotalEarnings = s.RideRequests.Sum(r => r.Fare),
-                Passengers = s.RideRequests.Select(r => new
+                SessionId = session.RideSessionId,
+                Date = session.CreatedAt,
+                CompletedAt = session.CompletedAt,
+                TotalPassengers = session.RideRequests.Count,
+                TotalEarnings = session.RideRequests.Sum(ride => ride.Fare),
+                Passengers = session.RideRequests.Select(ride => new
                 {
-                    r.PassengerId,
-                    r.PickupName,
-                    r.DropName,
-                    r.DistanceKm,
-                    r.Fare
+                    ride.PassengerId,
+                    ride.PickupName,
+                    ride.DropName,
+                    ride.DistanceKm,
+                    ride.Fare
                 })
             });
 
@@ -53,15 +53,15 @@ namespace GoBuddy.API.Controllers
 
             var requests = await _rideRepository.GetPassengerRidesAsync(userId);
 
-            var result = requests.Select(r => new
+            var result = requests.Select(ride => new
             {
-                r.RideRequestId,
-                DriverName = r.RideSession.Driver.Name,
-                r.PickupName,
-                r.DropName,
-                r.DistanceKm,
-                r.Fare,
-                Date = r.CreatedAt
+                ride.RideRequestId,
+                DriverName = ride.RideSession.Driver.Name,
+                ride.PickupName,
+                ride.DropName,
+                ride.DistanceKm,
+                ride.Fare,
+                Date = ride.CreatedAt
             });
 
             return Ok(result);

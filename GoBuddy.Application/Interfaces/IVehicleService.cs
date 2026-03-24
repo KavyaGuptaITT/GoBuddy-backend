@@ -5,6 +5,6 @@ namespace GoBuddy.Application.Interfaces;
 
 public interface IVehicleService
 {
-    Task CreateVehicleAsync(int driverId, string role, VehicleDTO request);
+    Task AddVehicleAsync(int driverId, string role, VehicleDTO request);
     Task<List<Vehicle>> GetAllVehiclesAsync();
 }

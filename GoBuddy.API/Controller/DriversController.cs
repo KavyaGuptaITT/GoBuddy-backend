@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GoBuddy.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/drivers")]
     public class DriversController : ControllerBase
     {
         private static double CalculateDistance(
