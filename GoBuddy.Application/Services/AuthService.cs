@@ -40,29 +40,6 @@ namespace GoBuddy.BusinessLayer.Services
 
             await _userRepository.AddAsync(user);
 
-            //if (role == UserRole.Driver)
-            //{
-            //    if (string.IsNullOrWhiteSpace(request.VehicleNumber) ||
-            //        string.IsNullOrWhiteSpace(request.VehicleModel) ||
-            //        string.IsNullOrWhiteSpace(request.LicenseNumber) ||
-            //        request.TotalSeats == null ||
-            //        request.RatePerKm == null)
-            //    {
-            //        throw new ApplicationException("Vehicle details required for Driver");
-            //    }
-
-            //    var vehicle = new Vehicle(
-            //        user.UserId,
-            //        request.VehicleNumber,
-            //        request.VehicleModel,
-            //        request.LicenseNumber,
-            //        request.TotalSeats.Value,
-            //        request.RatePerKm.Value
-            //    );
-
-            //    await _vehicleRepository.AddAsync(vehicle);
-            //}
-
             if (role == UserRole.Driver)
             {
                 if (string.IsNullOrWhiteSpace(request.VehicleNumber) ||
