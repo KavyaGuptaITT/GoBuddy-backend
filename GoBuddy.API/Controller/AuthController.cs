@@ -1,13 +1,16 @@
 ﻿using GoBuddy.Application.DTOs;
 using GoBuddy.BusinessLayer.DTOs;
 using GoBuddy.BusinessLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic;
 
 namespace GoBuddy.API.Controllers
 {
-    [ApiController]
+    
     [Route("api/auth")]
+    [ApiController]         
+    [Authorize]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -19,7 +22,8 @@ namespace GoBuddy.API.Controllers
 
         [HttpPost]
         [Route("register")]
-        public async Task<IActionResult> Register([FromForm] RegisterRequestDTO request)
+        [Authorize(Roles = "Driver")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDTO request)
         {
             await _authService.RegisterAsync(request);
 
@@ -32,6 +36,7 @@ namespace GoBuddy.API.Controllers
 
         [HttpPost]
         [Route("login")]
+        [Authorize(Roles = "Driver,Passenger")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
         {
             string token = await _authService.LoginAsync(request);

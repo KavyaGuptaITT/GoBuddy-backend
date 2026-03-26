@@ -2,6 +2,7 @@
 using GoBuddy.Domain.Entities;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
+using System.Security.Claims;
 using GoBuddy.API.SharedConstants;
 
 namespace GoBuddy.API.Hubs
@@ -9,21 +10,24 @@ namespace GoBuddy.API.Hubs
     public static class OnlineDriversStore
     {
         public static ConcurrentDictionary<string, DriverLocation> Drivers = new();
-        public static ConcurrentDictionary<string, PendingRequest> PendingRequests = new();
+        public static ConcurrentDictionary<string, ConcurrentQueue<PendingRequest>> PendingRequests = new();
         public static ConcurrentDictionary<string, ActiveRide> ActiveRides = new();
+        public static ConcurrentDictionary<string, byte> BusyPassengers = new();
     }
 
     public class DriverLocation
     {
         public string ConnectionId { get; set; } = string.Empty;
+        public string DriverUserId { get; set; } = string.Empty;
         public string DriverName { get; set; } = string.Empty;
         public string VehicleModel { get; set; } = string.Empty;
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public DateTime LastUpdated { get; set; }
-        public bool IsBusy { get; set; } = false;
-        public int AvailableSeats { get; set; } = 1;
+        public int AvailableSeats { get; set; }
         public decimal RatePerKm { get; set; }
+        public string Phone { get; set; } = string.Empty;
+        public string VehicleNo { get; set; } = string.Empty;
     }
 
     public class PendingRequest
@@ -38,7 +42,7 @@ namespace GoBuddy.API.Hubs
         public double DropLng { get; set; }
         public string PickupName { get; set; } = string.Empty;
         public string DropName { get; set; } = string.Empty;
-        public CancellationTokenSource CancellationToken { get; set; } = new();
+        public CancellationTokenSource CancellationSource { get; set; } = new();
     }
 
     public class ActiveRide
@@ -47,16 +51,18 @@ namespace GoBuddy.API.Hubs
         public string PassengerConnectionId { get; set; } = string.Empty;
         public string PassengerId { get; set; } = string.Empty;
         public string DriverId { get; set; } = string.Empty;
+        public int RideSessionId { get; set; }
         public string PassengerPin { get; set; } = string.Empty;
-        public bool PinConfirmed { get; set; } = false;
-        public double TotalKm { get; set; }
-        public int PinAttempts { get; set; } = 0;
+        public bool PinConfirmed { get; set; }
+        public int PinAttempts { get; set; }
         public double PickupLat { get; set; }
         public double PickupLng { get; set; }
         public double DropLat { get; set; }
         public double DropLng { get; set; }
         public string PickupName { get; set; } = string.Empty;
         public string DropName { get; set; } = string.Empty;
+        public bool DroppedOff { get; set; }
+        public double FixedDistanceKm { get; set; }
     }
 
     public class DriverLocationHub : Hub
@@ -67,100 +73,133 @@ namespace GoBuddy.API.Hubs
         {
             _scopeFactory = scopeFactory;
         }
-        public async Task DriverGoOnline(double latitude, double longitude,
-            string driverName, string vehicleModel, int availableSeats, decimal ratePerKm)
-        {
-            var connectionId = Context.ConnectionId;
 
-            OnlineDriversStore.Drivers[connectionId] = new DriverLocation
+        public async Task DriverGoOnline(double latitude, double longitude, string driverName, string vehicleModel, int availableSeats, decimal ratePerKm, string phone, string vehicleNo)
+        {
+            var currentConnectionId = Context.ConnectionId;
+            var currentDriverUserId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            using var dependencyScope = _scopeFactory.CreateScope();
+            var vehicleRepository = dependencyScope.ServiceProvider.GetRequiredService<IVehicleRepository>();
+            int dbAvailableSeats = 0;
+
+            if (!string.IsNullOrEmpty(currentDriverUserId) && int.TryParse(currentDriverUserId, out int parsedDriverId))
             {
-                ConnectionId = connectionId,
+                var targetVehicle = await vehicleRepository.GetByDriverIdAsync(parsedDriverId);
+                if (targetVehicle != null) dbAvailableSeats = targetVehicle.AvailableSeats;
+            }
+
+            OnlineDriversStore.Drivers[currentConnectionId] = new DriverLocation
+            {
+                ConnectionId = currentConnectionId,
+                DriverUserId = currentDriverUserId,
                 DriverName = driverName,
                 VehicleModel = vehicleModel,
                 Latitude = latitude,
                 Longitude = longitude,
                 LastUpdated = DateTime.UtcNow,
-                IsBusy = false,
-                AvailableSeats = availableSeats,
-                RatePerKm = ratePerKm
+                AvailableSeats = dbAvailableSeats,
+                RatePerKm = ratePerKm,
+                Phone = phone,
+                VehicleNo = vehicleNo
             };
 
-            await Clients.All.SendAsync("DriverOnline", new
+            await Clients.All.SendAsync(SignalRConstants.DriverOnline, new
             {
-                DriverId = connectionId,
+                DriverId = currentConnectionId,
                 DriverName = driverName,
                 VehicleModel = vehicleModel,
                 Latitude = latitude,
                 Longitude = longitude,
-                AvailableSeats = availableSeats
+                AvailableSeats = dbAvailableSeats
             });
         }
 
         public async Task UpdateLocation(double latitude, double longitude)
         {
-            var connectionId = Context.ConnectionId;
+            var activeConnectionId = Context.ConnectionId;
+            if (!OnlineDriversStore.Drivers.TryGetValue(activeConnectionId, out var activeDriver)) return;
 
-            if (OnlineDriversStore.Drivers.TryGetValue(connectionId, out var driver))
-            {
-                driver.Latitude = latitude;
-                driver.Longitude = longitude;
-                driver.LastUpdated = DateTime.UtcNow;
-            }
+            activeDriver.Latitude = latitude;
+            activeDriver.Longitude = longitude;
+            activeDriver.LastUpdated = DateTime.UtcNow;
 
-            await Clients.All.SendAsync("LocationUpdated", new
+            await Clients.All.SendAsync(SignalRConstants.LocationUpdated, new
             {
-                DriverId = connectionId,
+                DriverId = activeConnectionId,
                 Latitude = latitude,
-                Longitude = longitude
+                Longitude = longitude,
+                AvailableSeats = activeDriver.AvailableSeats
             });
         }
 
         public async Task DriverGoOffline()
         {
-            var connectionId = Context.ConnectionId;
+            var activeConnectionId = Context.ConnectionId;
+            bool isProcessingActiveRide = OnlineDriversStore.ActiveRides.Values.Any(ride => ride.DriverConnectionId == activeConnectionId);
 
-            var hasActiveRide = OnlineDriversStore.ActiveRides.Values
-                .Any(ride => ride.DriverConnectionId == connectionId);
-
-            if (hasActiveRide)
+            if (isProcessingActiveRide)
             {
-                await Clients.Caller.SendAsync("CannotGoOffline", new
-                {
-                    Message = "You have an active ride. Cancel the ride before going offline."
-                });
+                await Clients.Caller.SendAsync(SignalRConstants.CannotGoOffline, new { Message = MessageConstants.CannotGoOffline });
                 return;
             }
 
-            await CleanupDriver(connectionId);
-            await Clients.All.SendAsync("DriverOffline", new { DriverId = connectionId });
+            await CleanupDriverSession(activeConnectionId);
+            await Clients.All.SendAsync(SignalRConstants.DriverOffline, new { DriverId = activeConnectionId });
         }
 
-        public async Task SendRideRequest(
-            string driverConnectionId,
-            string passengerId,
-            string passengerName,
-            double pickupLat, double pickupLng,
-            double dropLat, double dropLng,
-            string pickupName, string dropName,
-            string passengerPin)
+        public async Task SendRideRequest(string driverConnectionId, string passengerId, string passengerName, double pickupLat, double pickupLng, double dropLat, double dropLng, string pickupName, string dropName, string passengerPin)
         {
-            if (!OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver) || driver.IsBusy)
+            var callerConnectionId = Context.ConnectionId;
+            if (OnlineDriversStore.BusyPassengers.ContainsKey(callerConnectionId))
             {
-                await Clients.Caller.SendAsync("RequestFailed", new
-                {
-                    Message = driver == null
-                        ? "Driver is no longer available."
-                        : "Driver is busy. Try another driver."
-                });
+                await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.PendingOrActiveRequestExists });
+                return;
+            }
+            if (!OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var targetDriver))
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.DriverUnavailable });
+                return;
+            }
+            if (targetDriver.AvailableSeats <= 0)
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.NoSeatsAvailable });
                 return;
             }
 
-            driver.IsBusy = true;
+            bool isExistingPassengerBoarded = OnlineDriversStore.ActiveRides.Values.Any(ride => ride.DriverConnectionId == driverConnectionId && ride.PinConfirmed);
+            bool hasRunningRide = OnlineDriversStore.ActiveRides.Values.Any(ride => ride.DriverConnectionId == driverConnectionId);
 
-            var CancellationToken = new CancellationTokenSource();
-            var pendingRequest = new PendingRequest
+            if (hasRunningRide && !isExistingPassengerBoarded)
             {
-                PassengerConnectionId = Context.ConnectionId,
+                await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.DriverBusyPickingUp });
+                return;
+            }
+
+            double distanceFromDriverPos = CalculateDistanceInKm(targetDriver.Latitude, targetDriver.Longitude, pickupLat, pickupLng);
+            if (distanceFromDriverPos > AppConstants.MaxCarpoolDeviationKm)
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.DriverTooFar });
+                return;
+            }
+
+            if (isExistingPassengerBoarded)
+            {
+                var boardedPassengerRide = OnlineDriversStore.ActiveRides.Values.First(ride => ride.DriverConnectionId == driverConnectionId && ride.PinConfirmed);
+                double distanceFromExistingDestination = CalculateDistanceInKm(boardedPassengerRide.DropLat, boardedPassengerRide.DropLng, dropLat, dropLng);
+
+                if (distanceFromExistingDestination > AppConstants.MaxCarpoolDeviationKm)
+                {
+                    await Clients.Caller.SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.DestinationTooFar });
+                    return;
+                }
+            }
+
+            OnlineDriversStore.BusyPassengers.TryAdd(callerConnectionId, 0);
+            var tokenSource = new CancellationTokenSource();
+
+            var newPendingRequest = new PendingRequest
+            {
+                PassengerConnectionId = callerConnectionId,
                 PassengerId = passengerId,
                 PassengerName = passengerName,
                 PassengerPin = passengerPin,
@@ -170,351 +209,420 @@ namespace GoBuddy.API.Hubs
                 DropLng = dropLng,
                 PickupName = pickupName,
                 DropName = dropName,
-                CancellationToken = CancellationToken
+                CancellationSource = tokenSource
             };
 
-            OnlineDriversStore.PendingRequests[driverConnectionId] = pendingRequest;
+            var targetRequestQueue = OnlineDriversStore.PendingRequests.GetOrAdd(driverConnectionId, _ => new ConcurrentQueue<PendingRequest>());
+            bool isQueueEmpty = targetRequestQueue.IsEmpty;
+            targetRequestQueue.Enqueue(newPendingRequest);
 
-            await Clients.Client(driverConnectionId).SendAsync("IncomingRideRequest", new
+            if (isQueueEmpty)
             {
-                PassengerId = passengerId,
-                PassengerConnectionId = Context.ConnectionId,
-                PassengerName = passengerName,
-                PickupLat = pickupLat,
-                PickupLng = pickupLng,
-                DropLat = dropLat,
-                DropLng = dropLng,
-                PickupName = pickupName,
-                DropName = dropName
-            });
-
-            await Clients.Caller.SendAsync("RequestSent", new { Message = "Request sent! Waiting for driver..." });
-
-            _ = Task.Run(async () =>
-            {
-                try
+                await Clients.Client(driverConnectionId).SendAsync(SignalRConstants.IncomingRideRequest, new
                 {
-                    await Task.Delay(AppConstants.DriverResponseTime, CancellationToken.Token);
+                    PassengerId = passengerId,
+                    PassengerConnectionId = callerConnectionId,
+                    PassengerName = passengerName,
+                    PickupLat = pickupLat,
+                    PickupLng = pickupLng,
+                    DropLat = dropLat,
+                    DropLng = dropLng,
+                    PickupName = pickupName,
+                    DropName = dropName
+                });
 
-                    if (OnlineDriversStore.PendingRequests.TryRemove(driverConnectionId, out _))
+                await Clients.Caller.SendAsync(SignalRConstants.RequestSent, new { Message = MessageConstants.RequestSent });
+
+                _ = Task.Run(async () =>
+                {
+                    try
                     {
-                        if (OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver))
-                            driver.IsBusy = false;
-
-                        await Clients.Client(pendingRequest.PassengerConnectionId)
-                            .SendAsync("RequestTimeout", new { Message = "Driver did not respond." });
-
-                        await Clients.Client(driverConnectionId)
-                            .SendAsync("RequestExpired", new { Message = "Request expired." });
+                        await Task.Delay(AppConstants.DriverResponseTime, tokenSource.Token);
+                        RemoveRequestFromQueue(driverConnectionId, callerConnectionId);
+                        OnlineDriversStore.BusyPassengers.TryRemove(callerConnectionId, out _);
+                        await Clients.Client(callerConnectionId).SendAsync(SignalRConstants.RequestTimeout, new { Message = MessageConstants.DriverDidNotRespond });
+                        await Clients.Client(driverConnectionId).SendAsync(SignalRConstants.RequestExpired, new { Message = MessageConstants.RequestExpired });
                     }
-                }
-                catch (TaskCanceledException) { }
-            });
+                    catch (TaskCanceledException) { }
+                });
+            }
         }
 
         public async Task AcceptRideRequest()
         {
-            var driverConnectionId = Context.ConnectionId;
+            var acceptingDriverConnectionId = Context.ConnectionId;
+            if (!OnlineDriversStore.Drivers.TryGetValue(acceptingDriverConnectionId, out var acceptingDriver)) return;
 
-            if (!OnlineDriversStore.PendingRequests.TryRemove(driverConnectionId, out var request))
+            if (!OnlineDriversStore.PendingRequests.TryGetValue(acceptingDriverConnectionId, out var pendingQueue) || pendingQueue.IsEmpty)
             {
-                await Clients.Caller.SendAsync("Error", new { Message = "No pending request found." });
+                await Clients.Caller.SendAsync(SignalRConstants.Error, new { Message = MessageConstants.NoPendingRequests });
                 return;
             }
 
-            request.CancellationToken.Cancel();
-
-            if (OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver))
-                driver.IsBusy = true;
-
-            var rideId = Guid.NewGuid().ToString();
-            var driverUserId = Context.User?
-                .FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
-            OnlineDriversStore.ActiveRides[rideId] = new ActiveRide
+            if (!pendingQueue.TryDequeue(out var matchedRequest))
             {
-                DriverConnectionId = driverConnectionId,
-                PassengerConnectionId = request.PassengerConnectionId,
-                PassengerId = request.PassengerId,
-                DriverId = driverUserId,
-                PassengerPin = request.PassengerPin,
+                await Clients.Caller.SendAsync(SignalRConstants.Error, new { Message = MessageConstants.NoPendingRequests });
+                return;
+            }
+
+            if (acceptingDriver.AvailableSeats > 0)
+            {
+                acceptingDriver.AvailableSeats--;
+                if (acceptingDriver.AvailableSeats <= 0)
+                    await Clients.All.SendAsync(SignalRConstants.DriverSeatsFull, new { DriverId = acceptingDriverConnectionId });
+                else
+                    await Clients.All.SendAsync(SignalRConstants.DriverSeatsUpdated, new { DriverId = acceptingDriverConnectionId, AvailableSeats = acceptingDriver.AvailableSeats });
+            }
+
+            OnlineDriversStore.PendingRequests[acceptingDriverConnectionId] = pendingQueue;
+            matchedRequest.CancellationSource.Cancel();
+            OnlineDriversStore.BusyPassengers.TryRemove(matchedRequest.PassengerConnectionId, out _);
+
+            using var dependencyScope = _scopeFactory.CreateScope();
+            var rideRepo = dependencyScope.ServiceProvider.GetRequiredService<IRideRepository>();
+            var vehicleRepo = dependencyScope.ServiceProvider.GetRequiredService<IVehicleRepository>();
+
+            int parsedDriverId = int.Parse(acceptingDriver.DriverUserId);
+            int currentSessionId;
+            var activeSession = await rideRepo.GetActiveSessionByDriverIdAsync(parsedDriverId);
+
+            if (activeSession != null)
+            {
+                currentSessionId = activeSession.RideSessionId;
+            }
+            else
+            {
+                var driverVehicle = await vehicleRepo.GetByDriverIdAsync(parsedDriverId);
+                var createdSession = new RideSession(parsedDriverId, driverVehicle!.VehicleId, matchedRequest.PickupName, matchedRequest.PickupLat, matchedRequest.PickupLng, matchedRequest.DropName, matchedRequest.DropLat, matchedRequest.DropLng);
+                currentSessionId = await rideRepo.AddSessionAsync(createdSession);
+            }
+
+            var generatedRideId = Guid.NewGuid().ToString();
+            OnlineDriversStore.ActiveRides[generatedRideId] = new ActiveRide
+            {
+                DriverConnectionId = acceptingDriverConnectionId,
+                PassengerConnectionId = matchedRequest.PassengerConnectionId,
+                PassengerId = matchedRequest.PassengerId,
+                DriverId = acceptingDriver.DriverUserId,
+                RideSessionId = currentSessionId,
+                PassengerPin = matchedRequest.PassengerPin,
                 PinConfirmed = false,
                 PinAttempts = 0,
-                TotalKm = 0,
-                PickupLat = request.PickupLat,
-                PickupLng = request.PickupLng,
-                DropLat = request.DropLat,
-                DropLng = request.DropLng,
-                PickupName = request.PickupName,
-                DropName = request.DropName
+                PickupLat = matchedRequest.PickupLat,
+                PickupLng = matchedRequest.PickupLng,
+                DropLat = matchedRequest.DropLat,
+                DropLng = matchedRequest.DropLng,
+                PickupName = matchedRequest.PickupName,
+                DropName = matchedRequest.DropName,
+                FixedDistanceKm = 0
             };
 
-            await Clients.Client(request.PassengerConnectionId).SendAsync("RideAccepted", new
+            await Clients.Client(matchedRequest.PassengerConnectionId).SendAsync(SignalRConstants.RideAccepted, new
             {
-                RideId = rideId,
-                DriverConnectionId = driverConnectionId,
-                DriverName = driver?.DriverName ?? "",
-                VehicleModel = driver?.VehicleModel ?? "",
-                DriverLat = driver?.Latitude ?? 0,
-                DriverLng = driver?.Longitude ?? 0
+                RideId = generatedRideId,
+                DriverConnectionId = acceptingDriverConnectionId,
+                DriverName = acceptingDriver.DriverName,
+                VehicleModel = acceptingDriver.VehicleModel,
+                DriverLat = acceptingDriver.Latitude,
+                DriverLng = acceptingDriver.Longitude,
+                RatePerKm = acceptingDriver.RatePerKm,
+                Phone = acceptingDriver.Phone,
+                VehicleNo = acceptingDriver.VehicleNo
             });
 
-            await Clients.Caller.SendAsync("RideConfirmed", new
+            await Clients.Caller.SendAsync(SignalRConstants.RideConfirmed, new
             {
-                RideId = rideId,
-                PassengerName = request.PassengerName,
-                PassengerConnectionId = request.PassengerConnectionId,
-                PickupLat = request.PickupLat,
-                PickupLng = request.PickupLng,
-                DropLat = request.DropLat,
-                DropLng = request.DropLng,
-                PickupName = request.PickupName,
-                DropName = request.DropName
+                RideId = generatedRideId,
+                PassengerName = matchedRequest.PassengerName,
+                PassengerConnectionId = matchedRequest.PassengerConnectionId,
+                PickupLat = matchedRequest.PickupLat,
+                PickupLng = matchedRequest.PickupLng,
+                DropLat = matchedRequest.DropLat,
+                DropLng = matchedRequest.DropLng,
+                PickupName = matchedRequest.PickupName,
+                DropName = matchedRequest.DropName
             });
+
+            var existingBoardedPassengers = OnlineDriversStore.ActiveRides.Values.Where(ride => ride.DriverConnectionId == acceptingDriverConnectionId && ride.PassengerConnectionId != matchedRequest.PassengerConnectionId && ride.PinConfirmed).ToList();
+
+            foreach (var boardedPassenger in existingBoardedPassengers)
+            {
+                await Clients.Client(boardedPassenger.PassengerConnectionId).SendAsync(SignalRConstants.NewPassengerJoined, new
+                {
+                    Message = $"A new passenger ({matchedRequest.PassengerName}) is joining at {matchedRequest.PickupName}.",
+                    PassengerName = matchedRequest.PassengerName,
+                    PickupName = matchedRequest.PickupName,
+                    PickupLat = matchedRequest.PickupLat,
+                    PickupLng = matchedRequest.PickupLng,
+                    DriverLat = acceptingDriver.Latitude,
+                    DriverLng = acceptingDriver.Longitude
+                });
+            }
+
+            if (!pendingQueue.IsEmpty && pendingQueue.TryPeek(out var upcomingRequest))
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.IncomingRideRequest, new
+                {
+                    upcomingRequest.PassengerId,
+                    upcomingRequest.PassengerConnectionId,
+                    upcomingRequest.PassengerName,
+                    upcomingRequest.PickupLat,
+                    upcomingRequest.PickupLng,
+                    upcomingRequest.DropLat,
+                    upcomingRequest.DropLng,
+                    upcomingRequest.PickupName,
+                    upcomingRequest.DropName
+                });
+            }
         }
 
         public async Task RejectRideRequest()
         {
-            var driverConnectionId = Context.ConnectionId;
+            var rejectingDriverConnectionId = Context.ConnectionId;
+            if (!OnlineDriversStore.PendingRequests.TryGetValue(rejectingDriverConnectionId, out var pendingQueue) || !pendingQueue.TryDequeue(out var declinedRequest)) return;
 
-            if (!OnlineDriversStore.PendingRequests.TryRemove(driverConnectionId, out var request))
-                return;
+            declinedRequest.CancellationSource.Cancel();
+            OnlineDriversStore.BusyPassengers.TryRemove(declinedRequest.PassengerConnectionId, out _);
+            await Clients.Client(declinedRequest.PassengerConnectionId).SendAsync(SignalRConstants.RideRejected, new { Message = MessageConstants.DriverDeclinedRequest });
 
-            request.CancellationToken.Cancel();
-
-            if (OnlineDriversStore.Drivers.TryGetValue(driverConnectionId, out var driver))
-                driver.IsBusy = false;
-
-            await Clients.Client(request.PassengerConnectionId).SendAsync("RideRejected", new
+            if (pendingQueue.TryPeek(out var nextQueuedReq))
             {
-                Message = "Driver declined your request."
-            });
-        }
-
-        public async Task ConfirmPin(string rideId, string enteredPin)
-        {
-            try
-            {
-                if (!OnlineDriversStore.ActiveRides.TryGetValue(rideId, out var ride))
+                await Clients.Caller.SendAsync(SignalRConstants.IncomingRideRequest, new
                 {
-                    await Clients.Caller.SendAsync("PinError", new { Message = "Ride not found." });
-                    return;
-                }
-
-                if (ride.PinConfirmed)
-                {
-                    await Clients.Caller.SendAsync("PinError", new { Message = "PIN already confirmed." });
-                    return;
-                }
-
-                if (ride.PassengerPin != enteredPin)
-                {
-                    ride.PinAttempts++;
-                    int attemptsLeft = AppConstants.PinAttempt - ride.PinAttempts;
-
-                    if (ride.PinAttempts >= AppConstants.PinAttempt)
-                    {
-                        OnlineDriversStore.ActiveRides.TryRemove(rideId, out _);
-
-                        if (OnlineDriversStore.Drivers.TryGetValue(ride.DriverConnectionId, out var driver))
-                            driver.IsBusy = false;
-
-                        var cancelPayload = new
-                        {
-                            Message = "Ride cancelled: too many incorrect PIN attempts.",
-                            CancelledBy = "System"
-                        };
-
-                        await Clients.Client(ride.PassengerConnectionId)
-                            .SendAsync("RideCancelled", cancelPayload);
-                        await Clients.Caller.SendAsync("RideCancelled", cancelPayload);
-                        return;
-                    }
-
-                    await Clients.Caller.SendAsync("PinError", new
-                    {
-                        Message = $"Incorrect PIN. {attemptsLeft} attempt{(attemptsLeft == 1 ? "" : "s")} left."
-                    });
-                    return;
-                }
-
-                ride.PinConfirmed = true;
-
-                
-                if (OnlineDriversStore.Drivers.TryGetValue(ride.DriverConnectionId, out var seatDriver))
-                {
-                    if (seatDriver.AvailableSeats > 0)
-                        seatDriver.AvailableSeats--;
-
-                    await Clients.All.SendAsync("SeatsUpdated", new
-                    {
-                        DriverId = ride.DriverConnectionId,
-                        AvailableSeats = seatDriver.AvailableSeats
-                    });
-                }
-
-                await Clients.Client(ride.PassengerConnectionId)
-                    .SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-                await Clients.Caller.SendAsync("PinConfirmed", new { Message = "PIN confirmed!" });
-
-
-            }
-            catch (Exception exception)
-            {
-                await Clients.Caller.SendAsync("PinError", new { Message = exception.Message });
-            }
-        }
-
-        public async Task CancelRide(string rideId, string cancelledBy)
-        {
-            if (!OnlineDriversStore.ActiveRides.TryGetValue(rideId, out var ride))
-            {
-                await Clients.Caller.SendAsync("CancelError", new { Message = "Ride not found." });
-                return;
-            }
-
-            if (ride.PinConfirmed)
-            {
-                await Clients.Caller.SendAsync("CancelError", new
-                {
-                    Message = "Ride cannot be cancelled after PIN is confirmed."
+                    nextQueuedReq.PassengerId,
+                    nextQueuedReq.PassengerConnectionId,
+                    nextQueuedReq.PassengerName,
+                    nextQueuedReq.PickupLat,
+                    nextQueuedReq.PickupLng,
+                    nextQueuedReq.DropLat,
+                    nextQueuedReq.DropLng,
+                    nextQueuedReq.PickupName,
+                    nextQueuedReq.DropName
                 });
+            }
+        }
+
+        public async Task ConfirmPin(string targetRideId, string inputPin)
+        {
+            if (!OnlineDriversStore.ActiveRides.TryGetValue(targetRideId, out var ongoingRide))
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.PinError, new { Message = MessageConstants.RideNotFound });
+                return;
+            }
+            if (ongoingRide.PinConfirmed)
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.PinError, new { Message = MessageConstants.PinAlreadyConfirmed });
+                return;
+            }
+            if (ongoingRide.PassengerPin != inputPin)
+            {
+                ongoingRide.PinAttempts++;
+                int remainingAttempts = AppConstants.PinAttempt - ongoingRide.PinAttempts;
+                if (ongoingRide.PinAttempts >= AppConstants.PinAttempt)
+                {
+                    await CancelRide(targetRideId, RoleConstants.SystemTooManyPins);
+                    return;
+                }
+                await Clients.Caller.SendAsync(SignalRConstants.PinError, new { Message = $"Wrong PIN. {remainingAttempts} attempt{(remainingAttempts == 1 ? string.Empty : "s")} left." });
                 return;
             }
 
-            OnlineDriversStore.ActiveRides.TryRemove(rideId, out _);
+            ongoingRide.PinConfirmed = true;
+            if (!OnlineDriversStore.Drivers.TryGetValue(ongoingRide.DriverConnectionId, out var carryingDriver)) return;
 
-            if (OnlineDriversStore.Drivers.TryGetValue(ride.DriverConnectionId, out var driver))
-                driver.IsBusy = false;
+            using var scope = _scopeFactory.CreateScope();
+            var vehicleRepo = scope.ServiceProvider.GetRequiredService<IVehicleRepository>();
+            var assignedVehicle = await vehicleRepo.GetByDriverIdAsync(int.Parse(carryingDriver.DriverUserId));
 
-            var payload = new { Message = "Ride Cancelled" };
+            if (assignedVehicle != null)
+            {
+                assignedVehicle.ReserveSeat();
+                await vehicleRepo.UpdateAsync(assignedVehicle);
+            }
 
-            await Clients.Client(ride.DriverConnectionId).SendAsync("RideCancelled", payload);
-            await Clients.Client(ride.PassengerConnectionId).SendAsync("RideCancelled", payload);
+            await Clients.Client(ongoingRide.PassengerConnectionId).SendAsync(SignalRConstants.PinConfirmed, new { Message = MessageConstants.PinConfirmedEnjoy });
+            await Clients.Caller.SendAsync(SignalRConstants.PinConfirmed, new { Message = MessageConstants.PinConfirmedBoarded });
+
+            var nearestWaitingPassenger = OnlineDriversStore.ActiveRides.Values.Where(r => r.DriverConnectionId == ongoingRide.DriverConnectionId && r.PassengerConnectionId != ongoingRide.PassengerConnectionId && !r.PinConfirmed).OrderBy(r => CalculateDistanceInKm(carryingDriver.Latitude, carryingDriver.Longitude, r.PickupLat, r.PickupLng)).FirstOrDefault();
+
+            if (nearestWaitingPassenger != null)
+            {
+                await Clients.Client(ongoingRide.PassengerConnectionId).SendAsync(SignalRConstants.DriverPickingUpOther, new
+                {
+                    Message = $"Driver is picking up one more passenger ({nearestWaitingPassenger.PickupName}) before heading to destination.",
+                    NextPickupName = nearestWaitingPassenger.PickupName,
+                    NextPickupLat = nearestWaitingPassenger.PickupLat,
+                    NextPickupLng = nearestWaitingPassenger.PickupLng,
+                    DriverLat = carryingDriver.Latitude,
+                    DriverLng = carryingDriver.Longitude
+                });
+            }
         }
 
-        public async Task DriverArrivedAtPickup(string rideId)
+        public async Task DriverArrivedAtPickup(string trackingRideId)
         {
-            if (!OnlineDriversStore.ActiveRides.TryGetValue(rideId, out var ride)) return;
-
-            await Clients.Client(ride.PassengerConnectionId).SendAsync("DriverArrived", new
-            {
-                Message = "Driver has arrived at your pickup location!"
-            });
-
-            await Clients.Caller.SendAsync("DriverArrived", new
-            {
-                Message = "You have arrived at pickup. Waiting for PIN confirmation."
-            });
+            if (!OnlineDriversStore.ActiveRides.TryGetValue(trackingRideId, out var targetRide)) return;
+            await Clients.Client(targetRide.PassengerConnectionId).SendAsync(SignalRConstants.DriverArrived, new { Message = MessageConstants.DriverArrivedPickup });
+            await Clients.Caller.SendAsync(SignalRConstants.DriverArrived, new { Message = MessageConstants.ArrivedAskPin });
         }
 
-        public async Task RideCompleted(string rideId, double totalKm)
+        public async Task CancelRide(string rideIdToCancel, string userRole)
         {
-            if (!OnlineDriversStore.ActiveRides.TryGetValue(rideId, out var ride)) return;
-            if (!OnlineDriversStore.Drivers.TryGetValue(ride.DriverConnectionId, out var driver)) return;
+            if (!OnlineDriversStore.ActiveRides.TryGetValue(rideIdToCancel, out var rideData))
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.CancelError, new { Message = MessageConstants.RideNotFound });
+                return;
+            }
+            if (rideData.PinConfirmed)
+            {
+                await Clients.Caller.SendAsync(SignalRConstants.CancelError, new { Message = MessageConstants.CannotCancelAfterPin });
+                return;
+            }
 
-            OnlineDriversStore.ActiveRides.TryRemove(rideId, out _);
-            driver.IsBusy = false;
+            OnlineDriversStore.ActiveRides.TryRemove(rideIdToCancel, out _);
 
-            double totalCost = Math.Round(totalKm * (double)driver.RatePerKm, 0);
+            if (OnlineDriversStore.Drivers.TryGetValue(rideData.DriverConnectionId, out var operatingDriver))
+            {
+                operatingDriver.AvailableSeats++;
+                await Clients.All.SendAsync(SignalRConstants.DriverSeatsUpdated, new { DriverId = rideData.DriverConnectionId, AvailableSeats = operatingDriver.AvailableSeats });
+            }
+
+            var cancellationData = new { Message = $"Ride cancelled by {userRole}.", CancelledBy = userRole, RideId = rideIdToCancel };
+            await Clients.Client(rideData.DriverConnectionId).SendAsync(SignalRConstants.RideCancelled, cancellationData);
+            await Clients.Client(rideData.PassengerConnectionId).SendAsync(SignalRConstants.RideCancelled, cancellationData);
+        }
+
+        public async Task RideCompleted(string completedRideId, double travelDistanceKm)
+        {
+            if (!OnlineDriversStore.ActiveRides.TryGetValue(completedRideId, out var finishedRide)) return;
+            if (!OnlineDriversStore.Drivers.TryGetValue(finishedRide.DriverConnectionId, out var drivingUser)) return;
+
+            OnlineDriversStore.ActiveRides.TryRemove(completedRideId, out _);
+            drivingUser.AvailableSeats++;
+
             using var scope = _scopeFactory.CreateScope();
             var rideRepo = scope.ServiceProvider.GetRequiredService<IRideRepository>();
             var vehicleRepo = scope.ServiceProvider.GetRequiredService<IVehicleRepository>();
 
-            int driverUserId = int.Parse(ride.DriverId);
-            var session = new RideSession(driverUserId);
-            session.Complete();
-            int sessionId = await rideRepo.AddSessionAsync(session);
+            int driverNumericId = int.Parse(drivingUser.DriverUserId);
+            var driverVehicle = await vehicleRepo.GetByDriverIdAsync(driverNumericId);
 
-            await rideRepo.AddRequestAsync(new RideRequest(
-                sessionId,
-                int.Parse(ride.PassengerId),
-                ride.PickupLat, ride.PickupLng,
-                ride.DropLat, ride.DropLng,
-                ride.PickupName, ride.DropName,
-                totalKm, (decimal)totalCost
-            ));
-
-
-            var vehicle = await vehicleRepo.GetByDriverIdAsync(driverUserId);
-            if (vehicle != null)
+            if (driverVehicle != null)
             {
-                vehicle.ResetAvailableSeats();
-                await vehicleRepo.UpdateAsync(vehicle);
+                driverVehicle.ReleaseSeat();
+                await vehicleRepo.UpdateAsync(driverVehicle);
             }
 
-            driver.AvailableSeats++;
+            await Clients.All.SendAsync(SignalRConstants.DriverSeatsUpdated, new { DriverId = finishedRide.DriverConnectionId, AvailableSeats = drivingUser.AvailableSeats });
+            double computedCost = Math.Round(travelDistanceKm * (double)drivingUser.RatePerKm, AppConstants.CostRoundingPrecision);
 
-            await Clients.All.SendAsync("SeatsUpdated", new
-            {
-                DriverId = ride.DriverConnectionId,
-                AvailableSeats = driver.AvailableSeats
-            });
+            var savedRequestRecord = new RideRequest(finishedRide.RideSessionId, int.Parse(finishedRide.PassengerId), finishedRide.PickupName, finishedRide.PickupLat, finishedRide.PickupLng, finishedRide.DropName, finishedRide.DropLat, finishedRide.DropLng, travelDistanceKm, (decimal)computedCost);
+            savedRequestRecord.Complete();
+            await rideRepo.AddRequestAsync(savedRequestRecord);
 
-            await Clients.Client(ride.PassengerConnectionId).SendAsync("RideCompleted", new
+            var connectedSession = await rideRepo.GetSessionByIdAsync(finishedRide.RideSessionId);
+            if (connectedSession != null)
             {
-                DriverName = driver.DriverName,
-                RatePerKm = driver.RatePerKm,
-                TotalKm = totalKm,
-                TotalCost = totalCost
-            });
+                connectedSession.AddFare((decimal)computedCost);
+                connectedSession.AddDistance(travelDistanceKm);
+            }
 
-            await Clients.Caller.SendAsync("RideCompleted", new
+            bool isVehicleEmpty = !OnlineDriversStore.ActiveRides.Values.Any(ride => ride.DriverConnectionId == finishedRide.DriverConnectionId);
+            if (isVehicleEmpty)
             {
-                TotalKm = totalKm,
-                RatePerKm = driver.RatePerKm,
-                TotalCost = totalCost
-            });
+                connectedSession?.Complete();
+                if (driverVehicle != null && drivingUser.AvailableSeats != (driverVehicle.TotalSeats - 1))
+                {
+                    driverVehicle.ResetAvailableSeats();
+                    await vehicleRepo.UpdateAsync(driverVehicle);
+                    drivingUser.AvailableSeats = driverVehicle.AvailableSeats;
+                    await Clients.All.SendAsync(SignalRConstants.DriverSeatsUpdated, new { DriverId = finishedRide.DriverConnectionId, AvailableSeats = drivingUser.AvailableSeats });
+                }
+            }
+
+            if (connectedSession != null) await rideRepo.UpdateSessionAsync(connectedSession);
+            await Clients.Client(finishedRide.PassengerConnectionId).SendAsync(SignalRConstants.RideCompleted, new { DriverName = drivingUser.DriverName, TotalKm = travelDistanceKm, RatePerKm = drivingUser.RatePerKm, TotalCost = computedCost });
+
+            var onboardedRidesList = OnlineDriversStore.ActiveRides.Values.Where(r => r.DriverConnectionId == finishedRide.DriverConnectionId && r.PinConfirmed).ToList();
+            if (onboardedRidesList.Any())
+            {
+                var upcomingDropRide = onboardedRidesList.OrderBy(r => CalculateDistanceInKm(drivingUser.Latitude, drivingUser.Longitude, r.DropLat, r.DropLng)).First();
+                foreach (var remainingTrip in onboardedRidesList)
+                {
+                    await Clients.Client(remainingTrip.PassengerConnectionId).SendAsync(SignalRConstants.NextDropUpdate, new
+                    {
+                        NextDropName = upcomingDropRide.DropName,
+                        NextDropLat = upcomingDropRide.DropLat,
+                        NextDropLng = upcomingDropRide.DropLng,
+                        DriverLat = drivingUser.Latitude,
+                        DriverLng = drivingUser.Longitude,
+                        StopsRemaining = onboardedRidesList.Count
+                    });
+                }
+            }
+            await Clients.Caller.SendAsync(SignalRConstants.RideCompleted, new { RideId = completedRideId, TotalKm = travelDistanceKm, RatePerKm = drivingUser.RatePerKm, TotalCost = computedCost, DriverLat = drivingUser.Latitude, DriverLng = drivingUser.Longitude });
         }
 
-        public async Task PassengerLeft(string passengerId)
+        public async Task PassengerLeft(string leftPassengerId)
         {
-            var rideEntry = OnlineDriversStore.ActiveRides
-                .FirstOrDefault(ride => ride.Value.PassengerId == passengerId);
-
-            if (rideEntry.Value != null && !rideEntry.Value.PinConfirmed)
-                await CancelRide(rideEntry.Key, "Passenger");
-
-            var driverEntry = OnlineDriversStore.Drivers
-                .FirstOrDefault(driver => driver.Value.IsBusy);
-            if (driverEntry.Value != null)
-                driverEntry.Value.IsBusy = false;
+            var storedRideEntry = OnlineDriversStore.ActiveRides.FirstOrDefault(kv => kv.Value.PassengerId == leftPassengerId);
+            if (storedRideEntry.Value != null && !storedRideEntry.Value.PinConfirmed) await CancelRide(storedRideEntry.Key, RoleConstants.Passenger);
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var connectionId = Context.ConnectionId;
+            var disconnectConnectionId = Context.ConnectionId;
+            var driverHostedRides = OnlineDriversStore.ActiveRides.Where(kv => kv.Value.DriverConnectionId == disconnectConnectionId).ToList();
 
-            var rideAsDriver = OnlineDriversStore.ActiveRides
-                .FirstOrDefault(ride => ride.Value.DriverConnectionId == connectionId);
-
-            if (rideAsDriver.Value != null && !rideAsDriver.Value.PinConfirmed)
+            foreach (var rideItem in driverHostedRides)
             {
-                OnlineDriversStore.ActiveRides.TryRemove(rideAsDriver.Key, out _);
-                if (OnlineDriversStore.Drivers.TryGetValue(connectionId, out var driver))
-                    driver.IsBusy = false;
-                await Clients.Client(rideAsDriver.Value.PassengerConnectionId)
-                    .SendAsync("RideCancelled", new { Message = "Driver disconnected.", CancelledBy = "Driver" });
+                if (!rideItem.Value.PinConfirmed)
+                {
+                    OnlineDriversStore.ActiveRides.TryRemove(rideItem.Key, out _);
+                    await Clients.Client(rideItem.Value.PassengerConnectionId).SendAsync(SignalRConstants.RideCancelled, new { Message = MessageConstants.DriverDisconnected, CancelledBy = RoleConstants.Driver, RideId = rideItem.Key });
+                }
             }
 
-            await CleanupDriver(connectionId);
-            await Clients.All.SendAsync("DriverOffline", new { DriverId = connectionId });
+            var passengerHostedRide = OnlineDriversStore.ActiveRides.FirstOrDefault(kv => kv.Value.PassengerConnectionId == disconnectConnectionId);
+            if (passengerHostedRide.Value != null && !passengerHostedRide.Value.PinConfirmed)
+            {
+                OnlineDriversStore.ActiveRides.TryRemove(passengerHostedRide.Key, out _);
+                await Clients.Client(passengerHostedRide.Value.DriverConnectionId).SendAsync(SignalRConstants.RideCancelled, new { Message = MessageConstants.PassengerDisconnected, CancelledBy = RoleConstants.Passenger, RideId = passengerHostedRide.Key });
+            }
+
+            await CleanupDriverSession(disconnectConnectionId);
+            await Clients.All.SendAsync(SignalRConstants.DriverOffline, new { DriverId = disconnectConnectionId });
             await base.OnDisconnectedAsync(exception);
         }
 
-        private async Task CleanupDriver(string connectionId)
+        private async Task CleanupDriverSession(string driverCleanupConnectionId)
         {
-            if (OnlineDriversStore.PendingRequests.TryRemove(connectionId, out var request))
+            if (OnlineDriversStore.PendingRequests.TryRemove(driverCleanupConnectionId, out var queuedRequests))
             {
-                request.CancellationToken.Cancel();
-                if (OnlineDriversStore.Drivers.TryGetValue(connectionId, out var driver))
-                    driver.IsBusy = false;
-                await Clients.Client(request.PassengerConnectionId)
-                    .SendAsync("RequestFailed", new { Message = "Driver went offline." });
+                foreach (var singleReq in queuedRequests)
+                {
+                    singleReq.CancellationSource.Cancel();
+                    OnlineDriversStore.BusyPassengers.TryRemove(singleReq.PassengerConnectionId, out _);
+                    await Clients.Client(singleReq.PassengerConnectionId).SendAsync(SignalRConstants.RequestFailed, new { Message = MessageConstants.DriverWentOffline });
+                }
             }
+            OnlineDriversStore.Drivers.TryRemove(driverCleanupConnectionId, out _);
+        }
 
-            OnlineDriversStore.Drivers.TryRemove(connectionId, out _);
+        private void RemoveRequestFromQueue(string currentDriverId, string targetPassengerId)
+        {
+            if (!OnlineDriversStore.PendingRequests.TryGetValue(currentDriverId, out var existingQueue)) return;
+            var retainedRequests = new List<PendingRequest>();
+            while (existingQueue.TryDequeue(out var reqToProcess))
+                if (reqToProcess.PassengerConnectionId != targetPassengerId) retainedRequests.Add(reqToProcess);
+            OnlineDriversStore.PendingRequests[currentDriverId] = new ConcurrentQueue<PendingRequest>(retainedRequests);
+        }
+
+        private static double CalculateDistanceInKm(double latitude1, double longitude1, double latitude2, double longitude2)
+        {
+            double differenceLat = latitude2 - latitude1;
+            double differenceLng = (longitude2 - longitude1) * Math.Cos(latitude1 * Math.PI / 180);
+            return Math.Sqrt(differenceLat * differenceLat + differenceLng * differenceLng) * AppConstants.KmConversionFactor;
         }
     }
 }
-
-

@@ -15,7 +15,7 @@ namespace GoBuddy.BusinessLayer.DTOs
         public string? LicenseNumber { get; set; }
         public int? TotalSeats { get; set; }
         public decimal? RatePerKm { get; set; }
-        public IFormFile? LicenseImg { get; set; }
-        public IFormFile? VehicleImg { get; set; }
+        //public IFormFile? LicenseImg { get; set; }
+        //public IFormFile? VehicleImg { get; set; }
     }
 }

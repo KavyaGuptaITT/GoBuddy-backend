@@ -1,3 +1,95 @@
+//using GoBuddy.BusinessLayer.Interfaces;
+//using GoBuddy.BusinessLayer.Services;
+//using GoBuddy.Application.Interfaces;
+//using GoBuddy.Infrastructure.Persistence;
+//using GoBuddy.Infrastructure.Repositories;
+//using Microsoft.EntityFrameworkCore;
+//using Microsoft.AspNetCore.Authentication.JwtBearer;
+//using Microsoft.IdentityModel.Tokens;
+//using System.Text;
+
+//var builder = WebApplication.CreateBuilder(args);
+
+//builder.Services.AddDbContext<AppDbContext>(options =>
+//    options.UseSqlServer(
+//        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+//builder.Services.AddControllers();
+//builder.Services.AddScoped<IAuthService, AuthService>();
+//builder.Services.AddScoped<IUserRepository, UserRepository>();
+//builder.Services.AddSingleton<JwtService>();
+//builder.Services.AddScoped<IVehicleService, VehicleService>();
+//builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
+//builder.Services.AddScoped<IRideRepository, RideRepository>();
+
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
+//builder.Services.AddSignalR(); 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAngular",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:4200")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod()
+//                  .AllowCredentials();
+//        });
+//});
+
+//var key = Encoding.ASCII.GetBytes("THIS_IS_MY_SUPER_SECRET_KEY_12345678");
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//})
+//.AddJwtBearer(options =>
+//{
+//    options.TokenValidationParameters = new TokenValidationParameters
+//    {
+//        ValidateIssuer = false,
+//        ValidateAudience = false,
+//        ValidateIssuerSigningKey = true,
+//        IssuerSigningKey = new SymmetricSecurityKey(key)
+//    };
+//    options.Events = new JwtBearerEvents
+//    {
+//        OnMessageReceived = context =>
+//        {
+//            var accessToken = context.Request.Query["access_token"];
+//            var path = context.HttpContext.Request.Path;
+//            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+//                context.Token = accessToken;
+//            return Task.CompletedTask;
+//        }
+//    };
+//});
+
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
+
+//var app = builder.Build();
+
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI(c =>
+//    {
+//        c.SwaggerEndpoint("/swagger/v1/swagger.json", "GoBuddy API V1");
+//        c.RoutePrefix = "swagger"; 
+//    });
+//}
+
+//app.UseHttpsRedirection();
+//app.UseCors("AllowAngular");
+//app.UseAuthentication();
+//app.UseAuthorization();
+//app.MapControllers();
+//app.MapHub<GoBuddy.API.Hubs.DriverLocationHub>("/hubs/driver");
+//app.Run();
+
+
+
 using GoBuddy.BusinessLayer.Interfaces;
 using GoBuddy.BusinessLayer.Services;
 using GoBuddy.Application.Interfaces;
@@ -21,23 +113,21 @@ builder.Services.AddSingleton<JwtService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IRideRepository, RideRepository>();
+builder.Services.AddSignalR();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR(); 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:4200")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
-var key = Encoding.ASCII.GetBytes("THIS_IS_MY_SUPER_SECRET_KEY_12345678");
+var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -50,7 +140,9 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
     };
     options.Events = new JwtBearerEvents
     {
@@ -65,6 +157,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -76,7 +169,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "GoBuddy API V1");
-        c.RoutePrefix = "swagger"; 
+        c.RoutePrefix = "swagger";
     });
 }
 

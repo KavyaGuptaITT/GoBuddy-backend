@@ -1,10 +1,13 @@
 using GoBuddy.Application.DTOs;
 using GoBuddy.Application.Interfaces;
 using GoBuddy.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 [Route("api/Vehicles")]
+[ApiController]           
+[Authorize]
 public class VehiclesController : ControllerBase
 {
     private readonly IVehicleService _vehicleService;
@@ -15,6 +18,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpPut]
+    [Authorize(Roles = "Driver")]
     public async Task<IActionResult> AddVehicle([FromForm] VehicleDTO request)
     {
         if (!ModelState.IsValid)
@@ -30,6 +34,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Driver,Passenger")]
     public async Task<IActionResult> GetVehicles()
     {
         var vehicles = await _vehicleService.GetAllVehiclesAsync();

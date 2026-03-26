@@ -3,7 +3,6 @@ using GoBuddy.BusinessLayer.DTOs;
 using GoBuddy.BusinessLayer.Interfaces;
 using GoBuddy.Domain.Entities;
 using GoBuddy.Domain.Enums;
-
 namespace GoBuddy.BusinessLayer.Services
 {
     public class AuthService : IAuthService
@@ -21,7 +20,6 @@ namespace GoBuddy.BusinessLayer.Services
             _vehicleRepository = vehicleRepository;
             _jwtService = jwtService;
         }
-
         public async Task RegisterAsync(RegisterRequestDTO request)
         {
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -37,7 +35,6 @@ namespace GoBuddy.BusinessLayer.Services
                 role,
                 request.Dob
             );
-
             await _userRepository.AddAsync(user);
 
             if (role == UserRole.Driver)
@@ -50,7 +47,6 @@ namespace GoBuddy.BusinessLayer.Services
                 {
                     throw new ApplicationException("Vehicle details required for Driver");
                 }
-
                 var vehicle = new Vehicle(
                     user.UserId,
                     request.VehicleNumber,
@@ -59,31 +55,9 @@ namespace GoBuddy.BusinessLayer.Services
                     request.TotalSeats.Value,
                     request.RatePerKm.Value
                 );
-
-                byte[]? licenseImageBytes = null;
-                byte[]? vehicleImageBytes = null;
-
-                if (request.LicenseImg != null)
-                {
-                    using var ms = new MemoryStream();
-                    await request.LicenseImg.CopyToAsync(ms);
-                    licenseImageBytes = ms.ToArray();
-                }
-
-                if (request.VehicleImg != null)
-                {
-                    using var ms = new MemoryStream();
-                    await request.VehicleImg.CopyToAsync(ms);
-                    vehicleImageBytes = ms.ToArray();
-                }
-
-                vehicle.SetImages(vehicleImageBytes, licenseImageBytes);
-
                 await _vehicleRepository.AddAsync(vehicle);
             }
         }
-
-            
         public async Task<string> LoginAsync(LoginRequestDTO request)
         {
             User? user = await _userRepository.GetByEmailAsync(request.Email);
@@ -93,6 +67,7 @@ namespace GoBuddy.BusinessLayer.Services
             if (!isPasswordValid) throw new ApplicationException("Invalid password");
 
             string vehicleModel = "";
+            string vehicleNo = "";
             int availableSeats = 1;
             decimal ratePerKm = 0;
 
@@ -102,6 +77,7 @@ namespace GoBuddy.BusinessLayer.Services
                 if (vehicle != null)
                 {
                     vehicleModel = vehicle.VehicleModel;
+                    vehicleNo = vehicle.VehicleNo;
                     availableSeats = vehicle.TotalSeats;
                     ratePerKm = vehicle.RatePerKm;
                 }
@@ -115,7 +91,9 @@ namespace GoBuddy.BusinessLayer.Services
                 vehicleModel,
                 user.UserPin.ToString(),
                 availableSeats,
-                ratePerKm
+                ratePerKm,
+                user.Phone,
+                vehicleNo
             );
 
             return token;

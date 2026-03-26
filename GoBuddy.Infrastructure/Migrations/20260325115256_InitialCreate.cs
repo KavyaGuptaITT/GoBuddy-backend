@@ -33,28 +33,6 @@ namespace GoBuddy.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "RideSessions",
-                columns: table => new
-                {
-                    RideSessionId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    DriverId = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RideSessions", x => x.RideSessionId);
-                    table.ForeignKey(
-                        name: "FK_RideSessions_Users_DriverId",
-                        column: x => x.DriverId,
-                        principalTable: "Users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Vehicles",
                 columns: table => new
                 {
@@ -85,6 +63,43 @@ namespace GoBuddy.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RideSessions",
+                columns: table => new
+                {
+                    RideSessionId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DriverId = table.Column<int>(type: "int", nullable: false),
+                    VehicleId = table.Column<int>(type: "int", nullable: false),
+                    StartName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    StartLatitude = table.Column<double>(type: "float", nullable: false),
+                    StartLongitude = table.Column<double>(type: "float", nullable: false),
+                    DestinationName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DestinationLatitude = table.Column<double>(type: "float", nullable: false),
+                    DestinationLongitude = table.Column<double>(type: "float", nullable: false),
+                    TotalFare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TotalDistance = table.Column<double>(type: "float", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RideSessions", x => x.RideSessionId);
+                    table.ForeignKey(
+                        name: "FK_RideSessions_Users_DriverId",
+                        column: x => x.DriverId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_RideSessions_Vehicles_VehicleId",
+                        column: x => x.VehicleId,
+                        principalTable: "Vehicles",
+                        principalColumn: "VehicleId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RideRequests",
                 columns: table => new
                 {
@@ -92,12 +107,12 @@ namespace GoBuddy.Infrastructure.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     RideSessionId = table.Column<int>(type: "int", nullable: false),
                     PassengerId = table.Column<int>(type: "int", nullable: false),
+                    PickupName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PickupLatitude = table.Column<double>(type: "float", nullable: false),
                     PickupLongitude = table.Column<double>(type: "float", nullable: false),
+                    DropName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DropLatitude = table.Column<double>(type: "float", nullable: false),
                     DropLongitude = table.Column<double>(type: "float", nullable: false),
-                    PickupName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DropName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DistanceKm = table.Column<double>(type: "float", nullable: false),
                     Fare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -137,6 +152,11 @@ namespace GoBuddy.Infrastructure.Migrations
                 column: "DriverId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RideSessions_VehicleId",
+                table: "RideSessions",
+                column: "VehicleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
                 table: "Users",
                 column: "Email",
@@ -173,10 +193,10 @@ namespace GoBuddy.Infrastructure.Migrations
                 name: "RideRequests");
 
             migrationBuilder.DropTable(
-                name: "Vehicles");
+                name: "RideSessions");
 
             migrationBuilder.DropTable(
-                name: "RideSessions");
+                name: "Vehicles");
 
             migrationBuilder.DropTable(
                 name: "Users");

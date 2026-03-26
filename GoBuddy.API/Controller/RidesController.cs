@@ -1,76 +1,94 @@
 ﻿using GoBuddy.Application.Interfaces;
+using GoBuddy.BusinessLayer.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace GoBuddy.API.Controllers
+
 {
+
+    [Route("api/[controller]")]
+
     [ApiController]
-    [Route("api/rides")]
+
     [Authorize]
+
     public class RidesController : ControllerBase
     {
         private readonly IRideRepository _rideRepository;
 
+
         public RidesController(IRideRepository rideRepository)
+
         {
             _rideRepository = rideRepository;
+
         }
 
-        [HttpGet("driver")]
-        public async Task<IActionResult> GetDriverRides()
+        [HttpGet("driver/history")]
+        [Authorize(Roles = "Driver")]
+
+        public async Task<IActionResult> GetDriverRideHistory()
+
         {
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var sessions = await _rideRepository.GetDriverRidesAsync(userId);
 
-            var result = sessions.Select(session => new
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int driverId))
+
             {
-                SessionId = session.RideSessionId,
-                Date = session.CreatedAt,
-                CompletedAt = session.CompletedAt,
-                TotalPassengers = session.RideRequests.Count,
-                TotalEarnings = session.RideRequests.Sum(ride => ride.Fare),
-                Passengers = session.RideRequests.Select(ride => new
+                return Unauthorized(new { Message = "Invalid driver token." });
+
+            }
+
+            var sessions = await _rideRepository.GetDriverHistoryAsync(driverId);
+
+
+            var historyList = sessions.Select(session => new DriverRideHistoryDto
+            {
+                RideSessionId = session.RideSessionId,
+
+                StartLocation = session.StartName,
+
+                DestinationLocation = session.DestinationName,
+
+                TotalFare = session.TotalFare,
+
+                TotalDistance = Math.Round(session.TotalDistance, 2),
+
+                Status = session.Status,
+
+                Date = session.CompletedAt ?? session.CreatedAt,
+
+                Passengers = session.RideRequests.Select(request => new PassengerRideDetailsDto
+
                 {
-                    ride.PassengerId,
-                    ride.PickupName,
-                    ride.DropName,
-                    ride.DistanceKm,
-                    ride.Fare
-                })
-            });
 
-            return Ok(result);
+                    PassengerName = request.Passenger.Name,
+
+                    PickupName = request.PickupName,
+
+                    DropName = request.DropName,
+
+                    Fare = request.Fare,
+
+                    DistanceKm = Math.Round(request.DistanceKm, 2),
+
+                    Status = request.Status
+
+                }).ToList()
+
+            }).ToList();
+
+
+            return Ok(historyList);
+
         }
 
-        [HttpGet("passenger")]
-        public async Task<IActionResult> GetPassengerRides()
-        {
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
-
-            var requests = await _rideRepository.GetPassengerRidesAsync(userId);
-
-            var result = requests.Select(ride => new
-            {
-                ride.RideRequestId,
-                DriverName = ride.RideSession.Driver.Name,
-                ride.PickupName,
-                ride.DropName,
-                ride.DistanceKm,
-                ride.Fare,
-                Date = ride.CreatedAt
-            });
-
-            return Ok(result);
-        }
     }
-}
-namespace GoBuddy.API.Controller
-{
-    public class RidesController
-    {
-    }
+
 }
